@@ -1,15 +1,15 @@
 /**
- * 🔐 USE RESET PASSWORD - SOLUÇÃO DEFINITIVA
- * Guarda flag ANTES de verifyOtp e faz signOut IMEDIATAMENTE
+ * 🔐 USE RESET PASSWORD HOOK
+ * Toda a lógica de reset de password centralizada
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { supabase } from '../services/supabase';
 import {
   AUTH_ERRORS,
+  AUTH_SUCCESS,
   RESEND_COOLDOWN,
   TOKEN_EXPIRY_TIME,
 } from '../utils/authConstants';
@@ -19,75 +19,87 @@ import {
 } from '../utils/authValidation';
 
 export const useResetPassword = (email) => {
+  // Estados principais
   const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Estados de UI
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Estados de loading
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+
+  // Timer de expiração
   const [timeLeft, setTimeLeft] = useState(TOKEN_EXPIRY_TIME);
   const [isExpired, setIsExpired] = useState(false);
+
+  // Timer de reenviar
   const [resendTimer, setResendTimer] = useState(RESEND_COOLDOWN);
   const [canResend, setCanResend] = useState(false);
 
-  // Ref para prevenir cancelamento por re-render
-  const isResettingRef = useRef(false);
+  // ==========================================
+  // TIMERS
+  // ==========================================
 
-  // Timers
+  // Timer de expiração do token
   useEffect(() => {
     if (timeLeft <= 0) {
       setIsExpired(true);
       return;
     }
-    const interval = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
+
     return () => clearInterval(interval);
   }, [timeLeft]);
 
+  // Timer para reenviar código
   useEffect(() => {
     if (resendTimer <= 0) {
       setCanResend(true);
       return;
     }
-    const interval = setInterval(() => setResendTimer(prev => prev - 1), 1000);
+
+    const interval = setInterval(() => {
+      setResendTimer((prev) => prev - 1);
+    }, 1000);
+
     return () => clearInterval(interval);
   }, [resendTimer]);
 
-  const handleVerifyAndReset = async () => {
-    // Prevenir múltiplas execuções
-    if (isResettingRef.current) {
-      console.log('⚠️ [RESET] Já está a executar, ignorando...');
-      return false;
-    }
+  // ==========================================
+  // VERIFICAR E RESETAR PASSWORD
+  // ==========================================
 
+  const handleVerifyAndReset = async () => {
+    // Verificar se token expirou
     if (isExpired) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Código Expirado', 'Solicita um novo código.');
+      Alert.alert('Código Expirado', 'Por favor, solicita um novo código.');
       return false;
     }
 
+    // Validar formulário
     const validation = validateResetForm(token, newPassword, confirmPassword);
+
     if (!validation.valid) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Erro', validation.error);
       return false;
     }
 
-    isResettingRef.current = true;
     setIsVerifying(true);
 
     try {
-      console.log('🔐 [RESET] Iniciando reset de password...');
+      console.log('🔐 Verificando token para:', email);
 
-      // PASSO 0: GUARDAR FLAG ANTES DE QUALQUER COISA!
-      console.log('💾 [RESET] Guardando flag ANTES de verifyOtp...');
-      await AsyncStorage.setItem('is_resetting_password', 'true');
-      await AsyncStorage.setItem('just_reset_password', 'true');
-      console.log('✅ [RESET] Flags guardadas!');
-
-      // PASSO 1: Verificar OTP (isto loga o user automaticamente!)
-      console.log('🔐 [RESET] Verificando token...');
+      // PASSO 1: Verificar OTP
       const { error: verifyError } = await supabase.auth.verifyOtp({
         email: email.trim(),
         token: token.trim(),
@@ -95,120 +107,90 @@ export const useResetPassword = (email) => {
       });
 
       if (verifyError) {
-        console.error('❌ [RESET] Erro no OTP:', verifyError.message);
-        await AsyncStorage.removeItem('is_resetting_password');
-        await AsyncStorage.removeItem('just_reset_password');
+        console.error('❌ Erro no OTP:', verifyError.message);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert('Código Inválido', AUTH_ERRORS.INVALID_TOKEN);
         return false;
       }
 
-      console.log('✅ [RESET] Token validado! User foi logado automaticamente.');
+      console.log('✅ Token validado! Atualizando password...');
 
-      // PASSO 2: Atualizar password IMEDIATAMENTE
-      console.log('🔐 [RESET] Atualizando password...');
-      
-      let updateError = null;
-      try {
-        const result = await supabase.auth.updateUser({
-          password: newPassword,
-        });
-        updateError = result.error;
-        console.log('📊 [RESET] Resultado updateUser:', { error: updateError, hasData: !!result.data });
-      } catch (e) {
-        console.error('❌ [RESET] Exception no updateUser:', e);
-        updateError = e;
-      }
+      // PASSO 2: Atualizar password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
 
       if (updateError) {
-        console.error('❌ [RESET] Erro ao atualizar:', updateError.message || updateError);
-        await AsyncStorage.removeItem('is_resetting_password');
-        await AsyncStorage.removeItem('just_reset_password');
+        console.error('❌ Erro ao atualizar:', updateError.message);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert('Erro', 'Não foi possível atualizar a password.');
         return false;
       }
 
-      console.log('✅ [RESET] Password atualizada com sucesso!');
-
-      // PASSO 3: SIGNOUT IMEDIATAMENTE!
-      console.log('🚪 [RESET] Fazendo signOut IMEDIATO...');
-      console.log('📊 [RESET] Estado antes do signOut:', { isResettingRef: isResettingRef.current });
-      
-      try {
-        const signOutResult = await supabase.auth.signOut();
-        console.log('📊 [RESET] Resultado signOut:', signOutResult);
-      } catch (signOutError) {
-        console.error('❌ [RESET] Exception no signOut:', signOutError);
-      }
-      
-      console.log('✅ [RESET] SignOut completo!');
-
-      // PASSO 4: Delay para garantir que tudo propaga
-      console.log('⏳ [RESET] Aguardando propagação (2s)...');
-      console.log('⏳ [RESET] Iniciando delay às:', new Date().toISOString());
-      
-      await new Promise(resolve => setTimeout(() => {
-        console.log('⏳ [RESET] Delay a terminar às:', new Date().toISOString());
-        resolve();
-      }, 2000));
-      
-      console.log('✅ [RESET] Delay completo!');
-
-      // PASSO 5: Limpar flag de "is_resetting"
-      await AsyncStorage.removeItem('is_resetting_password');
-      console.log('✅ [RESET] Flag is_resetting removida!');
-
-      console.log('🎉 [RESET] Reset de password completo com sucesso!');
-
+      // Sucesso!
       setResetSuccess(true);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       return true;
     } catch (error) {
-      console.error('❌ [RESET] Erro:', error);
-      await AsyncStorage.removeItem('is_resetting_password');
-      await AsyncStorage.removeItem('just_reset_password');
+      console.error('❌ Erro inesperado:', error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erro', 'Ocorreu um erro.');
+      Alert.alert('Erro', 'Ocorreu um erro. Tenta novamente.');
       return false;
     } finally {
-      isResettingRef.current = false;
       setIsVerifying(false);
     }
   };
 
+  // ==========================================
+  // REENVIAR CÓDIGO
+  // ==========================================
+
   const handleResendCode = async () => {
     if (!canResend) return false;
+
     setIsResending(true);
 
     try {
+      console.log('📧 Reenviando código para:', email);
+
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+
       if (error) {
+        console.error('❌ Erro ao reenviar:', error.message);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Erro', 'Não foi possível reenviar.');
+        Alert.alert('Erro', 'Não foi possível reenviar o código.');
         return false;
       }
 
+      // Reset timers
       setTimeLeft(TOKEN_EXPIRY_TIME);
       setIsExpired(false);
       setResendTimer(RESEND_COOLDOWN);
       setCanResend(false);
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Código Enviado', 'Verifica o teu email.');
+      Alert.alert('Código Enviado', AUTH_SUCCESS.RESET_EMAIL_SENT);
+
       return true;
     } catch (error) {
+      console.error('❌ Erro ao reenviar:', error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erro', 'Não foi possível reenviar.');
+      Alert.alert('Erro', 'Não foi possível reenviar o código.');
       return false;
     } finally {
       setIsResending(false);
     }
   };
 
+  // ==========================================
+  // HANDLERS
+  // ==========================================
+
   const handleTokenChange = (value) => {
-    setToken(value.replace(/[^0-9]/g, ''));
+    // Apenas números
+    const numericValue = value.replace(/[^0-9]/g, '');
+    setToken(numericValue);
   };
 
   const toggleShowPassword = async () => {
@@ -221,6 +203,10 @@ export const useResetPassword = (email) => {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
+  // ==========================================
+  // CLEANUP
+  // ==========================================
+
   const cleanup = useCallback(() => {
     setToken('');
     setNewPassword('');
@@ -229,16 +215,68 @@ export const useResetPassword = (email) => {
     setShowConfirmPassword(false);
   }, []);
 
-  const getFormattedTime = () => formatTimeRemaining(timeLeft);
-  const getResendText = () => canResend ? 'Reenviar código' : `Reenviar em ${resendTimer}s`;
-  const canSubmit = () => token.length === 8 && newPassword.length >= 6 && confirmPassword.length >= 6 && !isVerifying && !isExpired;
+  // ==========================================
+  // UTILITÁRIOS
+  // ==========================================
+
+  const getFormattedTime = () => {
+    return formatTimeRemaining(timeLeft);
+  };
+
+  const getResendText = () => {
+    if (canResend) return 'Reenviar código';
+    return `Reenviar em ${resendTimer}s`;
+  };
+
+  const canSubmit = () => {
+    return (
+      token.length === 8 &&
+      newPassword.length >= 6 &&
+      confirmPassword.length >= 6 &&
+      !isVerifying &&
+      !isExpired
+    );
+  };
+
+  // ==========================================
+  // RETORNO
+  // ==========================================
 
   return {
-    token, setToken, newPassword, setNewPassword, confirmPassword, setConfirmPassword,
-    showPassword, showConfirmPassword, resetSuccess,
-    isVerifying, isResending, timeLeft, isExpired, canResend, resendTimer,
-    handleVerifyAndReset, handleResendCode, handleTokenChange,
-    toggleShowPassword, toggleShowConfirmPassword, cleanup,
-    getFormattedTime, getResendText, canSubmit,
+    // Estados de input
+    token,
+    setToken,
+    newPassword,
+    setNewPassword,
+    confirmPassword,
+    setConfirmPassword,
+
+    // Estados de UI
+    showPassword,
+    showConfirmPassword,
+    resetSuccess,
+
+    // Estados de loading
+    isVerifying,
+    isResending,
+
+    // Timer states
+    timeLeft,
+    isExpired,
+    canResend,
+    resendTimer,
+
+    // Funções principais
+    handleVerifyAndReset,
+    handleResendCode,
+    handleTokenChange,
+    toggleShowPassword,
+    toggleShowConfirmPassword,
+    cleanup,
+
+    // Utilitários
+    getFormattedTime,
+    getResendText,
+    canSubmit,
   };
 };

@@ -27,6 +27,7 @@ import { AuthHeader } from '../components/Auth/AuthHeader';
 import { AuthInput } from '../components/Auth/AuthInput';
 import { TokenInput } from '../components/Auth/TokenInput';
 import { useResetPassword } from '../hooks/useResetPassword';
+import { supabase } from '../services/supabase';
 
 export default function ResetPasswordScreen({ route, navigation }) {
   const email = route.params?.email || '';
@@ -75,43 +76,23 @@ export default function ResetPasswordScreen({ route, navigation }) {
     };
   }, [cleanup]);
 
-  // Handler de sucesso - signOut já foi feito no hook!
-  const handleSuccess = () => {
-    console.log('✅ ResetPasswordScreen: Mostrando alert de sucesso...');
-    
-    Alert.alert(
-      'Sucesso! 🎉',
-      'A tua password foi alterada com sucesso. Faz login com a nova password.',
-      [
-        {
-          text: 'Fazer Login',
-          onPress: () => {
-            // Limpar dados do reset
-            cleanup();
-            
-            console.log('✅ ResetPasswordScreen: Navegando para Auth...');
-            
-            // Navegar para Auth - signOut já foi feito no hook
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Auth' }],
-            });
-          },
+  // Handler de sucesso
+  const handleSuccess = async () => {
+    Alert.alert('Sucesso!', 'A tua password foi alterada com sucesso.', [
+      {
+        text: 'OK',
+        onPress: async () => {
+          // Fazer logout e voltar ao Auth
+          await supabase.auth.signOut();
+          navigation.navigate('Auth');
         },
-      ],
-      { cancelable: false }
-    );
+      },
+    ]);
   };
-
-  // Chamar handleSuccess quando reset for bem-sucedido (apenas uma vez)
-  useEffect(() => {
-    if (resetSuccess) {
-      handleSuccess();
-    }
-  }, [resetSuccess]);
 
   // Se reset foi bem-sucedido, mostrar loading
   if (resetSuccess) {
+    handleSuccess();
     return (
       <View style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color="#32CD32" />
