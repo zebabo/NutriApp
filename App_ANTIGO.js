@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { useAuth } from './src/hooks/useAuth';
 
@@ -27,50 +27,9 @@ function Navigation() {
   const [justResetPassword, setJustResetPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [checkingFlags, setCheckingFlags] = useState(true);
-  const [cleaningFlags, setCleaningFlags] = useState(true);
-
-  // 🧹 LIMPAR TODAS AS FLAGS AO INICIAR (APENAS UMA VEZ)
-  useEffect(() => {
-    const forceCleanup = async () => {
-      try {
-        console.log('🧹 [App] LIMPEZA FORÇADA - Removendo todas as flags...');
-        
-        await AsyncStorage.removeItem('is_resetting_password');
-        await AsyncStorage.removeItem('just_reset_password');
-        await AsyncStorage.removeItem('reset_timestamp');
-        
-        console.log('✅ [App] Todas as flags foram limpas!');
-        
-        // Verificar
-        const check1 = await AsyncStorage.getItem('is_resetting_password');
-        const check2 = await AsyncStorage.getItem('just_reset_password');
-        const check3 = await AsyncStorage.getItem('reset_timestamp');
-        
-        console.log('📊 [App] Verificação após limpeza:', {
-          is_resetting: check1,
-          just_reset: check2,
-          timestamp: check3
-        });
-        
-        if (!check1 && !check2 && !check3) {
-          console.log('✅ [App] SUCESSO! Todas as flags removidas!');
-        } else {
-          console.log('⚠️ [App] Algumas flags ainda existem:', { check1, check2, check3 });
-        }
-      } catch (error) {
-        console.error('❌ [App] Erro ao limpar flags:', error);
-      } finally {
-        setCleaningFlags(false);
-      }
-    };
-
-    forceCleanup();
-  }, []); // Apenas no mount
 
   // Verificar flags SEMPRE que session mudar
   useEffect(() => {
-    if (cleaningFlags) return; // Esperar limpeza terminar
-
     const checkFlags = async () => {
       try {
         const justResetFlag = await AsyncStorage.getItem('just_reset_password');
@@ -83,35 +42,7 @@ function Navigation() {
           hasProfile
         });
         
-        // TIMEOUT: Se is_resetting está há mais de 10 segundos, limpar!
         if (isResettingFlag === 'true') {
-          console.log('⏳ [App] Reset em progresso, verificando timeout...');
-          
-          const resetTimestamp = await AsyncStorage.getItem('reset_timestamp');
-          const now = Date.now();
-          
-          if (!resetTimestamp) {
-            console.log('⏱️ [App] Guardando timestamp de início do reset...');
-            await AsyncStorage.setItem('reset_timestamp', now.toString());
-          } else {
-            const elapsed = now - parseInt(resetTimestamp);
-            const elapsedSeconds = Math.floor(elapsed / 1000);
-            
-            console.log(`⏱️ [App] Reset em progresso há ${elapsedSeconds}s`);
-            
-            if (elapsedSeconds > 10) {
-              console.log('⚠️ [App] TIMEOUT! Reset travou há mais de 10s. Limpando flags...');
-              await AsyncStorage.removeItem('is_resetting_password');
-              await AsyncStorage.removeItem('just_reset_password');
-              await AsyncStorage.removeItem('reset_timestamp');
-              console.log('✅ [App] Flags limpas automaticamente!');
-              
-              setIsResettingPassword(false);
-              setJustResetPassword(false);
-              return;
-            }
-          }
-          
           console.log('⏳ [App] Reset em progresso, ignorando session...');
           setIsResettingPassword(true);
           setJustResetPassword(false);
@@ -119,13 +50,12 @@ function Navigation() {
           console.log('✅ [App] Reset completo! Forçando ir para Auth...');
           setJustResetPassword(true);
           setIsResettingPassword(false);
+          // Limpar flag depois de processar
           await AsyncStorage.removeItem('just_reset_password');
-          await AsyncStorage.removeItem('reset_timestamp');
         } else {
           console.log('ℹ️ [App] Sem flags de reset');
           setJustResetPassword(false);
           setIsResettingPassword(false);
-          await AsyncStorage.removeItem('reset_timestamp');
         }
       } catch (error) {
         console.error('❌ [App] Erro ao verificar flags:', error);
@@ -137,19 +67,7 @@ function Navigation() {
     };
 
     checkFlags();
-  }, [session, hasProfile, cleaningFlags]);
-
-  // Loading durante limpeza
-  if (cleaningFlags) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#121212', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#32CD32" />
-        <Text style={{ color: '#32CD32', marginTop: 16, fontSize: 14 }}>
-          🧹 Limpando dados antigos...
-        </Text>
-      </View>
-    );
-  }
+  }, [session, hasProfile]); // Re-verificar quando session ou hasProfile mudar!
 
   // Loading state
   if (isLoading || checkingFlags) {
