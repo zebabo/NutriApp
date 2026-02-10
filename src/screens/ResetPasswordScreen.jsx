@@ -1,19 +1,10 @@
 /**
- * 🔐 RESET PASSWORD SCREEN - REFATORADO
- * 
- * APENAS JSX + Features novas!
- * - Token input com 6 campos
- * - Timer de expiração
- * - Reenviar código
- * - Show/hide password
- * - Confirmação de password
+ * 🔐 RESET PASSWORD SCREEN - COM LIMPEZA DE FLAG
  */
 
-import { Ionicons } from '@expo/vector-icons';
-import { useEffect } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect } from "react";
 import {
-  ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -21,89 +12,70 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { AuthButton } from '../components/Auth/AuthButton';
-import { AuthHeader } from '../components/Auth/AuthHeader';
-import { AuthInput } from '../components/Auth/AuthInput';
-import { TokenInput } from '../components/Auth/TokenInput';
-import { useResetPassword } from '../hooks/useResetPassword';
-import { supabase } from '../services/supabase';
+} from "react-native";
+import { AuthButton } from "../components/Auth/AuthButton";
+import { AuthHeader } from "../components/Auth/AuthHeader";
+import { AuthInput } from "../components/Auth/AuthInput";
+import { TokenInput } from "../components/Auth/TokenInput";
+import { useResetPassword } from "../hooks/useResetPassword";
 
 export default function ResetPasswordScreen({ route, navigation }) {
-  const email = route.params?.email || '';
+  const email = route.params?.email || "";
 
   const {
-    // Estados de input
     token,
     setToken,
     newPassword,
     setNewPassword,
     confirmPassword,
     setConfirmPassword,
-
-    // Estados de UI
     showPassword,
     showConfirmPassword,
-    resetSuccess,
-
-    // Estados de loading
     isVerifying,
     isResending,
-
-    // Timer states
     timeLeft,
     isExpired,
     canResend,
-
-    // Funções principais
     handleVerifyAndReset,
     handleResendCode,
     handleTokenChange,
     toggleShowPassword,
     toggleShowConfirmPassword,
     cleanup,
-
-    // Utilitários
     getFormattedTime,
     getResendText,
     canSubmit,
-  } = useResetPassword(email);
+  } = useResetPassword(email, navigation);
 
-  // Cleanup ao desmontar
+  // Cleanup ao desmontar E garantir que flag é limpa
   useEffect(() => {
+    console.log("🟢 [ResetPasswordScreen] Montado");
+
     return () => {
+      console.log("🔴 [ResetPasswordScreen] Desmontando - a limpar flag");
       cleanup();
+
+      // CRÍTICO: Limpar flag ao sair
+      if (global.setPasswordResetFlag) {
+        global.setPasswordResetFlag(false);
+      }
     };
   }, [cleanup]);
 
-  // Handler de sucesso
-  const handleSuccess = async () => {
-    Alert.alert('Sucesso!', 'A tua password foi alterada com sucesso.', [
-      {
-        text: 'OK',
-        onPress: async () => {
-          // Fazer logout e voltar ao Auth
-          await supabase.auth.signOut();
-          navigation.navigate('Auth');
-        },
-      },
-    ]);
-  };
+  const handleGoBack = () => {
+    console.log("🔙 [ResetPasswordScreen] Botão voltar pressionado");
 
-  // Se reset foi bem-sucedido, mostrar loading
-  if (resetSuccess) {
-    handleSuccess();
-    return (
-      <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#32CD32" />
-        <Text style={styles.loadingText}>A processar...</Text>
-      </View>
-    );
-  }
+    // Limpar flag antes de voltar
+    if (global.setPasswordResetFlag) {
+      global.setPasswordResetFlag(false);
+    }
+
+    navigation.goBack();
+  };
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
       <ScrollView
@@ -111,26 +83,23 @@ export default function ResetPasswordScreen({ route, navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <AuthHeader
           title="Redefinir Password"
           subtitle={`Introduz o código enviado para ${email}`}
           icon="lock-closed"
         />
 
-        {/* Timer */}
         <View style={styles.timerContainer}>
           <Ionicons
-            name={isExpired ? 'time-outline' : 'timer-outline'}
+            name={isExpired ? "time-outline" : "timer-outline"}
             size={16}
-            color={isExpired ? '#FF6B6B' : '#32CD32'}
+            color={isExpired ? "#FF6B6B" : "#32CD32"}
           />
           <Text style={[styles.timerText, isExpired && styles.timerExpired]}>
-            {isExpired ? 'Código expirado' : `Expira em: ${getFormattedTime()}`}
+            {isExpired ? "Código expirado" : `Expira em: ${getFormattedTime()}`}
           </Text>
         </View>
 
-        {/* Token Input */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Código de 8 dígitos</Text>
           <TokenInput
@@ -141,7 +110,6 @@ export default function ResetPasswordScreen({ route, navigation }) {
           />
         </View>
 
-        {/* Nova Password */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Nova Password</Text>
           <AuthInput
@@ -154,7 +122,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
             rightIcon={
               <TouchableOpacity onPress={toggleShowPassword}>
                 <Ionicons
-                  name={showPassword ? 'eye-off' : 'eye'}
+                  name={showPassword ? "eye-off" : "eye"}
                   size={20}
                   color="#666"
                 />
@@ -163,7 +131,6 @@ export default function ResetPasswordScreen({ route, navigation }) {
           />
         </View>
 
-        {/* Confirmar Password */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Confirmar Password</Text>
           <AuthInput
@@ -175,13 +142,13 @@ export default function ResetPasswordScreen({ route, navigation }) {
             textContentType="newPassword"
             error={
               confirmPassword.length > 0 && newPassword !== confirmPassword
-                ? 'As passwords não coincidem'
+                ? "As passwords não coincidem"
                 : null
             }
             rightIcon={
               <TouchableOpacity onPress={toggleShowConfirmPassword}>
                 <Ionicons
-                  name={showConfirmPassword ? 'eye-off' : 'eye'}
+                  name={showConfirmPassword ? "eye-off" : "eye"}
                   size={20}
                   color="#666"
                 />
@@ -190,7 +157,6 @@ export default function ResetPasswordScreen({ route, navigation }) {
           />
         </View>
 
-        {/* Botão principal */}
         <AuthButton
           title="CONFIRMAR ALTERAÇÃO"
           onPress={handleVerifyAndReset}
@@ -199,7 +165,6 @@ export default function ResetPasswordScreen({ route, navigation }) {
           style={styles.mainButton}
         />
 
-        {/* Reenviar código */}
         <AuthButton
           title={getResendText()}
           onPress={handleResendCode}
@@ -209,16 +174,14 @@ export default function ResetPasswordScreen({ route, navigation }) {
           style={styles.resendButton}
         />
 
-        {/* Voltar */}
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={handleGoBack}
           disabled={isVerifying || isResending}
         >
           <Text style={styles.backText}>← Voltar</Text>
         </TouchableOpacity>
 
-        {/* Ajuda */}
         <View style={styles.helpContainer}>
           <Text style={styles.helpText}>📧 Não recebeste o código?</Text>
           <Text style={styles.helpSubtext}>
@@ -233,47 +196,38 @@ export default function ResetPasswordScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
-  },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: '#FFF',
-    marginTop: 12,
-    fontSize: 14,
+    backgroundColor: "#121212",
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 25,
   },
   timerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(50, 205, 50, 0.1)',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(50, 205, 50, 0.1)",
     padding: 12,
     borderRadius: 10,
     marginBottom: 24,
     gap: 8,
   },
   timerText: {
-    color: '#32CD32',
+    color: "#32CD32",
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   timerExpired: {
-    color: '#FF6B6B',
+    color: "#FF6B6B",
   },
   section: {
     marginBottom: 20,
   },
   sectionLabel: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -285,30 +239,30 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginTop: 20,
-    alignItems: 'center',
+    alignItems: "center",
     padding: 10,
   },
   backText: {
-    color: '#666',
+    color: "#666",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   helpContainer: {
     marginTop: 30,
-    alignItems: 'center',
+    alignItems: "center",
     paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#2A2A2A',
+    borderTopColor: "#2A2A2A",
   },
   helpText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 6,
   },
   helpSubtext: {
-    color: '#666',
+    color: "#666",
     fontSize: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

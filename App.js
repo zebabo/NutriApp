@@ -1,90 +1,182 @@
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useEffect, useRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
-import { AuthProvider } from './src/contexts/AuthContext';
-import { useAuth } from './src/hooks/useAuth';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
+import { AuthProvider } from "./src/contexts/AuthContext";
+import { useAuth } from "./src/hooks/useAuth";
 
 // Telas
-import AuthScreen from './src/screens/AuthScreen';
-import DashboardScreen from './src/screens/DashboardScreen';
-import FormScreen from './src/screens/FormScreen';
-import HistoryScreen from './src/screens/HistoryScreen';
-import RecipeDetailScreen from './src/screens/RecipeDetailScreen';
-import RecipesScreen from './src/screens/RecipesScreen';
-import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
-import SettingsScreen from './src/screens/SettingsScreen';
+import AuthScreen from "./src/screens/AuthScreen";
+import DashboardScreen from "./src/screens/DashboardScreen";
+import FormScreen from "./src/screens/FormScreen";
+import HistoryScreen from "./src/screens/HistoryScreen";
+import RecipeDetailScreen from "./src/screens/RecipeDetailScreen";
+import RecipesScreen from "./src/screens/RecipesScreen";
+import ResetPasswordScreen from "./src/screens/ResetPasswordScreen";
+import SettingsScreen from "./src/screens/SettingsScreen";
 
 const Stack = createNativeStackNavigator();
+const RESET_PASSWORD_FLAG = "@is_resetting_password";
 
-/**
- * Componente de navegação
- * Decide qual stack mostrar baseado no estado de autenticação
- */
 function Navigation() {
   const { session, hasProfile, isLoading } = useAuth();
   const navigationRef = useRef(null);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const blockNavigationRef = useRef(false);
+  const lastNavigatedScreen = useRef(null);
 
-  // Monitorar mudanças em hasProfile e navegar automaticamente
+  // Verificar flag ao montar
   useEffect(() => {
-    console.log("🔍 [Navigation] Estado mudou - session:", !!session, "hasProfile:", hasProfile, "isLoading:", isLoading);
-    
-    if (!isLoading && session && hasProfile && navigationRef.current) {
-      console.log("✅ [Navigation] hasProfile é true! A navegar para Dashboard...");
-      
-      // Dar um pequeno delay para garantir que a navegação está pronta
+    const checkResetFlag = async () => {
+      const flag = await AsyncStorage.getItem(RESET_PASSWORD_FLAG);
+      if (flag === "true") {
+        console.log("⚠️ [App] Flag de reset detectada");
+        setIsResettingPassword(true);
+        blockNavigationRef.current = true;
+      }
+    };
+    checkResetFlag();
+  }, []);
+
+  // Função global para controlar flag
+  useEffect(() => {
+    global.setPasswordResetFlag = async (value) => {
+      console.log(`🔧 [App] setPasswordResetFlag(${value})`);
+      setIsResettingPassword(value);
+      blockNavigationRef.current = value;
+      await AsyncStorage.setItem(RESET_PASSWORD_FLAG, value ? "true" : "false");
+    };
+
+    return () => {
+      delete global.setPasswordResetFlag;
+    };
+  }, []);
+
+  // Listener para bloquear navegação durante reset
+  const onNavigationStateChange = (state) => {
+    if (!state || !blockNavigationRef.current) return;
+
+    const currentRoute = state.routes[state.index];
+
+    console.log(`🔍 [Navigation] State change: ${currentRoute?.name}`);
+
+    if (blockNavigationRef.current && currentRoute?.name !== "ResetPassword") {
+      console.log(`🚫 [Navigation] BLOQUEANDO ${currentRoute?.name}`);
+
+      setImmediate(() => {
+        if (navigationRef.current && blockNavigationRef.current) {
+          try {
+            navigationRef.current.navigate("ResetPassword");
+            console.log("✅ [Navigation] Forçado ResetPassword");
+          } catch (e) {
+            console.error("❌ [Navigation] Erro:", e);
+          }
+        }
+      });
+    }
+  };
+
+  // NOVA LÓGICA: Navegar explicitamente quando session/hasProfile mudam
+  useEffect(() => {
+    console.log("🔍 [Navigation] Estado mudou:", {
+      session: !!session,
+      hasProfile,
+      isLoading,
+      blockNav: blockNavigationRef.current,
+    });
+
+    // Ignorar se está em loading ou se flag está ativa
+    if (isLoading || blockNavigationRef.current) {
+      console.log("⏸️ [Navigation] Aguardando (loading ou bloqueado)");
+      return;
+    }
+
+    // Determinar qual screen deve estar ativa
+    let targetScreen = null;
+
+    if (!session) {
+      targetScreen = "Auth";
+    } else if (hasProfile) {
+      targetScreen = "Dashboard";
+    } else {
+      targetScreen = "Form";
+    }
+
+    console.log(
+      `🎯 [Navigation] Target screen: ${targetScreen}, Last: ${lastNavigatedScreen.current}`,
+    );
+
+    // Só navegar se mudou de screen
+    if (
+      targetScreen &&
+      targetScreen !== lastNavigatedScreen.current &&
+      navigationRef.current
+    ) {
+      console.log(`➡️ [Navigation] NAVEGANDO para ${targetScreen}...`);
+
+      // Pequeno delay para garantir que navigator está pronto
       setTimeout(() => {
-        try {
-          navigationRef.current?.navigate('Dashboard');
-          console.log("✅ [Navigation] Navegação para Dashboard executada!");
-        } catch (error) {
-          console.error("❌ [Navigation] Erro ao navegar:", error);
+        if (navigationRef.current) {
+          try {
+            navigationRef.current.navigate(targetScreen);
+            lastNavigatedScreen.current = targetScreen;
+            console.log(`✅ [Navigation] Navegado para ${targetScreen}`);
+          } catch (error) {
+            console.error(
+              `❌ [Navigation] Erro ao navegar para ${targetScreen}:`,
+              error,
+            );
+          }
         }
       }, 100);
     }
   }, [session, hasProfile, isLoading]);
 
-  // Loading state
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#121212', justifyContent: 'center' }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#121212",
+          justifyContent: "center",
+        }}
+      >
         <ActivityIndicator size="large" color="#32CD32" />
       </View>
     );
   }
 
+  // Determinar initialRouteName baseado no estado atual
+  const getInitialRoute = () => {
+    if (!session) return "Auth";
+    if (hasProfile) return "Dashboard";
+    return "Form";
+  };
+
   return (
-    <NavigationContainer ref={navigationRef}>
-      <Stack.Navigator 
+    <NavigationContainer
+      ref={navigationRef}
+      onStateChange={onNavigationStateChange}
+    >
+      <Stack.Navigator
         screenOptions={{ headerShown: false }}
-        initialRouteName={!session ? "Auth" : (hasProfile ? "Dashboard" : "Form")}
+        initialRouteName={getInitialRoute()}
       >
-        {!session ? (
-          // Stack de autenticação (utilizador não está logado)
-          <>
-            <Stack.Screen name="Auth" component={AuthScreen} />
-            <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-          </>
-        ) : (
-          // Stack principal (utilizador está logado)
-          <>
-            <Stack.Screen name="Dashboard" component={DashboardScreen} />
-            <Stack.Screen name="Form" component={FormScreen} />
-            <Stack.Screen name="History" component={HistoryScreen} />
-            <Stack.Screen name="Recipes" component={RecipesScreen} />
-            <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} />
-            <Stack.Screen name="Settings" component={SettingsScreen} />
-          </>
-        )}
+        {/* SEMPRE renderizar TODAS as screens */}
+        <Stack.Screen name="Auth" component={AuthScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+        <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <Stack.Screen name="Form" component={FormScreen} />
+        <Stack.Screen name="History" component={HistoryScreen} />
+        <Stack.Screen name="Recipes" component={RecipesScreen} />
+        <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
 
-/**
- * Componente principal da aplicação
- * Envolve tudo com o AuthProvider
- */
 export default function App() {
   return (
     <AuthProvider>

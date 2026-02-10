@@ -1,14 +1,14 @@
-import * as Notifications from 'expo-notifications';
-import { createContext, useEffect, useRef, useState } from 'react';
+import * as Notifications from "expo-notifications";
+import { createContext, useEffect, useRef, useState } from "react";
 import {
   checkUserProfile,
   onAuthStateChange,
   verifySessionAndProfile,
-} from '../services/authService';
+} from "../services/authService";
 import {
   registerForPushNotificationsAsync,
   scheduleWaterReminder,
-} from '../services/notificationService';
+} from "../services/notificationService";
 
 /**
  * Context para gestão de autenticação
@@ -37,17 +37,22 @@ export const AuthProvider = ({ children }) => {
   // Função para refrescar o estado do perfil
   const refreshProfile = async () => {
     console.log("🔄 [AuthContext] refreshProfile chamado");
-    
+
     if (!session?.user?.id) {
       console.log("⚠️ [AuthContext] Sem sessão, definindo hasProfile = false");
       setHasProfile(false);
       return;
     }
 
-    console.log("🔍 [AuthContext] A verificar perfil para userId:", session.user.id);
-    const { hasProfile: profileExists } = await checkUserProfile(session.user.id);
+    console.log(
+      "🔍 [AuthContext] A verificar perfil para userId:",
+      session.user.id,
+    );
+    const { hasProfile: profileExists } = await checkUserProfile(
+      session.user.id,
+    );
     console.log("📊 [AuthContext] Resultado checkUserProfile:", profileExists);
-    
+
     setHasProfile(profileExists);
     console.log("✅ [AuthContext] hasProfile atualizado para:", profileExists);
   };
@@ -62,23 +67,21 @@ export const AuthProvider = ({ children }) => {
     setupNotifications();
 
     // Listeners de notificações
-    notificationListener.current = Notifications.addNotificationReceivedListener(
-      (notification) => {
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
         console.log("🔔 Notificação recebida:", notification);
-      }
-    );
+      });
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
         console.log("👆 Interação com notificação detectada");
-      }
-    );
+      });
 
     // --- VERIFICAR SESSÃO INICIAL ---
     const initAuth = async () => {
-      const { session: currentSession, hasProfile: profileExists } = 
+      const { session: currentSession, hasProfile: profileExists } =
         await verifySessionAndProfile();
-      
+
       setSession(currentSession);
       setHasProfile(profileExists);
       setIsLoading(false);
@@ -94,7 +97,9 @@ export const AuthProvider = ({ children }) => {
 
       // Verificar perfil quando há sessão
       if (newSession) {
-        const { hasProfile: profileExists } = await checkUserProfile(newSession.user.id);
+        const { hasProfile: profileExists } = await checkUserProfile(
+          newSession.user.id,
+        );
         setHasProfile(profileExists);
       } else {
         setHasProfile(false);

@@ -1,35 +1,35 @@
 /**
  * 🎣 USE RECIPES HOOK - CORRIGIDO
  * Toda a lógica de receitas centralizada
- * 
+ *
  * FIX: Melhorada lógica de filtros para funcionar corretamente
  */
 
-import * as Haptics from 'expo-haptics';
-import { useCallback, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
-import { receitasPortuguesas } from '../../data/receitasDB';
-import { supabase } from '../services/supabase';
+import * as Haptics from "expo-haptics";
+import { useCallback, useEffect, useState } from "react";
+import { Alert } from "react-native";
+import { receitasPortuguesas } from "../../data/receitasDB";
+import { supabase } from "../services/supabase";
 import {
-    createMealFromRecipe,
-    filterByCategory,
-    filterBySearch,
-    sortByGoal,
-    toggleFavorite as toggleFavoriteHelper,
-    validateRecipe,
-} from '../utils/recipeHelpers';
-import { useAuth } from './useAuth';
+  createMealFromRecipe,
+  filterByCategory,
+  filterBySearch,
+  sortByGoal,
+  toggleFavorite as toggleFavoriteHelper,
+  validateRecipe,
+} from "../utils/recipeHelpers";
+import { useAuth } from "./useAuth";
 
 export const useRecipes = () => {
   const { user } = useAuth();
 
   // Estados principais
-  const [objetivo, setObjetivo] = useState('Perder');
-  const [categoriaAtiva, setCategoriaAtiva] = useState('Pequeno-almoço');
-  const [pesquisa, setPesquisa] = useState('');
+  const [objetivo, setObjetivo] = useState("Perder");
+  const [categoriaAtiva, setCategoriaAtiva] = useState("Pequeno-almoço");
+  const [pesquisa, setPesquisa] = useState("");
   const [favoritos, setFavoritos] = useState([]);
   const [receitasFiltradas, setReceitasFiltradas] = useState([]);
-  
+
   // Estados de loading
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,24 +40,31 @@ export const useRecipes = () => {
   // ==========================================
 
   const aplicarFiltros = useCallback(() => {
-    console.log('🔍 Aplicando filtros:', { categoriaAtiva, pesquisa, objetivo });
-    
+    console.log("🔍 Aplicando filtros:", {
+      categoriaAtiva,
+      pesquisa,
+      objetivo,
+    });
+
     let filtradas = receitasPortuguesas;
-    console.log('📚 Total de receitas:', filtradas.length);
+    console.log("📚 Total de receitas:", filtradas.length);
 
     // 1. Aplicar pesquisa (se houver)
     if (pesquisa.trim().length > 0) {
       filtradas = filterBySearch(filtradas, pesquisa);
-      console.log('🔎 Após pesquisa:', filtradas.length);
+      console.log("🔎 Após pesquisa:", filtradas.length);
     } else {
       // 2. Aplicar filtro de categoria (se não houver pesquisa)
       filtradas = filterByCategory(filtradas, categoriaAtiva, favoritos);
-      console.log(`📁 Após filtro categoria "${categoriaAtiva}":`, filtradas.length);
+      console.log(
+        `📁 Após filtro categoria "${categoriaAtiva}":`,
+        filtradas.length,
+      );
     }
 
     // 3. Ordenar por objetivo do usuário
     filtradas = sortByGoal(filtradas, objetivo);
-    console.log('✅ Receitas finais:', filtradas.length);
+    console.log("✅ Receitas finais:", filtradas.length);
 
     setReceitasFiltradas(filtradas);
   }, [categoriaAtiva, pesquisa, favoritos, objetivo]);
@@ -68,35 +75,35 @@ export const useRecipes = () => {
 
   const carregarDados = async () => {
     try {
-      console.log('📥 Carregando dados do Supabase...');
-      
+      console.log("📥 Carregando dados do Supabase...");
+
       if (!user?.id) {
-        console.log('⚠️ Sem user.id');
+        console.log("⚠️ Sem user.id");
         setLoading(false);
         return;
       }
 
       const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('objetivo, receitas_favoritas')
-        .eq('id', user.id)
+        .from("profiles")
+        .select("objetivo, receitas_favoritas")
+        .eq("id", user.id)
         .single();
 
       if (error) throw error;
 
       if (profile) {
-        console.log('✅ Profile carregado:', profile);
-        
-        setObjetivo(profile.objetivo || 'Perder');
+        console.log("✅ Profile carregado:", profile);
+
+        setObjetivo(profile.objetivo || "Perder");
         const listaFavs = profile.receitas_favoritas || [];
         setFavoritos(listaFavs);
-        
-        console.log('🎯 Objetivo:', profile.objetivo);
-        console.log('❤️ Favoritos:', listaFavs.length);
+
+        console.log("🎯 Objetivo:", profile.objetivo);
+        console.log("❤️ Favoritos:", listaFavs.length);
       }
     } catch (e) {
-      console.error('❌ Erro ao carregar dados:', e);
-      Alert.alert('Erro', 'Não foi possível carregar as receitas.');
+      console.error("❌ Erro ao carregar dados:", e);
+      Alert.alert("Erro", "Não foi possível carregar as receitas.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -109,7 +116,7 @@ export const useRecipes = () => {
 
   useEffect(() => {
     if (!loading) {
-      console.log('🔄 Estados mudaram, reaplicando filtros...');
+      console.log("🔄 Estados mudaram, reaplicando filtros...");
       aplicarFiltros();
     }
   }, [categoriaAtiva, pesquisa, favoritos, objetivo, loading, aplicarFiltros]);
@@ -119,13 +126,13 @@ export const useRecipes = () => {
   // ==========================================
 
   const inicializar = useCallback(async () => {
-    console.log('🚀 Inicializando useRecipes...');
+    console.log("🚀 Inicializando useRecipes...");
     setLoading(true);
     await carregarDados();
   }, [user]);
 
   const onRefresh = useCallback(async () => {
-    console.log('🔄 Refresh...');
+    console.log("🔄 Refresh...");
     setRefreshing(true);
     await carregarDados();
   }, [user]);
@@ -137,7 +144,7 @@ export const useRecipes = () => {
   const toggleFavorito = async (recipeId) => {
     try {
       if (!user?.id) {
-        Alert.alert('Erro', 'É necessário estar autenticado.');
+        Alert.alert("Erro", "É necessário estar autenticado.");
         return;
       }
 
@@ -145,17 +152,17 @@ export const useRecipes = () => {
       setFavoritos(novaLista);
 
       const { error } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update({ receitas_favoritas: novaLista })
-        .eq('id', user.id);
+        .eq("id", user.id);
 
       if (error) throw error;
 
       // Haptic feedback
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
-      console.error('Erro ao toggle favorito:', error);
-      Alert.alert('Erro', 'Não foi possível atualizar favoritos.');
+      console.error("Erro ao toggle favorito:", error);
+      Alert.alert("Erro", "Não foi possível atualizar favoritos.");
       // Reverter estado
       setFavoritos(favoritos);
     }
@@ -169,7 +176,7 @@ export const useRecipes = () => {
     // Validar receita
     const validation = validateRecipe(recipe);
     if (!validation.valid) {
-      Alert.alert('Erro', validation.error);
+      Alert.alert("Erro", validation.error);
       return false;
     }
 
@@ -177,15 +184,15 @@ export const useRecipes = () => {
 
     try {
       if (!user?.id) {
-        Alert.alert('Erro', 'É necessário estar autenticado.');
+        Alert.alert("Erro", "É necessário estar autenticado.");
         return false;
       }
 
       // Buscar refeições atuais
       const { data: profile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('refeicoes_hoje')
-        .eq('id', user.id)
+        .from("profiles")
+        .select("refeicoes_hoje")
+        .eq("id", user.id)
         .single();
 
       if (fetchError) throw fetchError;
@@ -198,9 +205,9 @@ export const useRecipes = () => {
 
       // Atualizar no Supabase
       const { error: updateError } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update({ refeicoes_hoje: novaLista })
-        .eq('id', user.id);
+        .eq("id", user.id);
 
       if (updateError) throw updateError;
 
@@ -209,9 +216,9 @@ export const useRecipes = () => {
 
       return true;
     } catch (error) {
-      console.error('Erro ao adicionar refeição:', error);
+      console.error("Erro ao adicionar refeição:", error);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erro', 'Não foi possível adicionar a refeição.');
+      Alert.alert("Erro", "Não foi possível adicionar a refeição.");
       return false;
     } finally {
       setAddingMeal(false);
@@ -223,19 +230,19 @@ export const useRecipes = () => {
   // ==========================================
 
   const handleCategoriaChange = (categoria) => {
-    console.log('📂 Mudando categoria para:', categoria);
+    console.log("📂 Mudando categoria para:", categoria);
     setCategoriaAtiva(categoria);
-    setPesquisa(''); // Limpar pesquisa ao mudar categoria
+    setPesquisa(""); // Limpar pesquisa ao mudar categoria
   };
 
   const handlePesquisaChange = (texto) => {
-    console.log('🔎 Pesquisando:', texto);
+    console.log("🔎 Pesquisando:", texto);
     setPesquisa(texto);
   };
 
   const handleClearSearch = () => {
-    console.log('🧹 Limpando pesquisa');
-    setPesquisa('');
+    console.log("🧹 Limpando pesquisa");
+    setPesquisa("");
   };
 
   // ==========================================
