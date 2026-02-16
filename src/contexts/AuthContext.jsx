@@ -97,29 +97,59 @@ export const AuthProvider = ({ children }) => {
       console.log("User ID:", newSession?.user?.id);
       console.log("================================");
 
+      // ✅ IGNORAR eventos de PASSWORD_RECOVERY e USER_UPDATED
+      // Estes eventos são disparados durante o reset de password
+      // e podem criar sessões temporárias que interferem com o fluxo
+      if (event === "PASSWORD_RECOVERY" || event === "USER_UPDATED") {
+        console.log(
+          `⚠️ [AuthContext] Ignorando evento ${event} (reset password em progresso)`,
+        );
+        return;
+      }
+
+      // ✅ Só processar SIGNED_IN e SIGNED_OUT
+      if (event === "SIGNED_OUT") {
+        console.log("🚪 [AuthContext] SIGNED_OUT - limpando estado");
+        setSession(null);
+        setHasProfile(false);
+        setIsLoading(false);
+        return;
+      }
+
+      if (event === "SIGNED_IN") {
+        console.log(
+          "🔑 [AuthContext] SIGNED_IN - verificando perfil primeiro...",
+        );
+
+        // ✅ IMPORTANTE: Verificar perfil ANTES de atualizar o estado
+        let profileExists = false;
+        if (newSession?.user?.id) {
+          console.log("🔍 [AuthContext] A verificar perfil...");
+          const result = await checkUserProfile(newSession.user.id);
+          profileExists = result.hasProfile;
+          console.log("📊 [AuthContext] Perfil existe:", profileExists);
+        }
+
+        // ✅ Agora atualiza AMBOS os estados de uma vez
+        console.log(
+          "✅ [AuthContext] Atualizando estados: session=true, hasProfile=" +
+            profileExists,
+        );
+        setHasProfile(profileExists);
+        setSession(newSession);
+        setIsLoading(false);
+        return;
+      }
+
+      // Para outros eventos (INITIAL_SESSION, TOKEN_REFRESHED, etc.)
+      console.log(`ℹ️ [AuthContext] Evento ${event} - atualizando sessão`);
       setSession(newSession);
 
-      // Verificar perfil quando há sessão
-      if (newSession) {
-        console.log("🔍 [AuthContext] A verificar perfil...");
-
+      if (newSession?.user?.id) {
         const { hasProfile: profileExists } = await checkUserProfile(
           newSession.user.id,
         );
-
-        console.log("📊 [AuthContext] Perfil existe:", profileExists);
-
-        // ✅ SOLUÇÃO 2: Adicionar delay de 300ms antes de atualizar estado
-        console.log(
-          "⏳ [AuthContext] Aguardando 300ms antes de atualizar hasProfile...",
-        );
-        await new Promise((resolve) => setTimeout(resolve, 300));
-
         setHasProfile(profileExists);
-        console.log(
-          "✅ [AuthContext] hasProfile atualizado para:",
-          profileExists,
-        );
       } else {
         setHasProfile(false);
       }

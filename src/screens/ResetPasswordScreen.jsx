@@ -1,5 +1,6 @@
 /**
- * 🔐 RESET PASSWORD SCREEN - COM LIMPEZA DE FLAG
+ * 🔐 RESET PASSWORD SCREEN - VERSÃO SIMPLIFICADA
+ * Sem flags globais, sem complexidade desnecessária
  */
 
 import { Ionicons } from "@expo/vector-icons";
@@ -47,29 +48,18 @@ export default function ResetPasswordScreen({ route, navigation }) {
     canSubmit,
   } = useResetPassword(email, navigation);
 
-  // Cleanup ao desmontar E garantir que flag é limpa
+  // Cleanup ao desmontar
   useEffect(() => {
     console.log("🟢 [ResetPasswordScreen] Montado");
-
     return () => {
-      console.log("🔴 [ResetPasswordScreen] Desmontando - a limpar flag");
+      console.log("🔴 [ResetPasswordScreen] Desmontando");
       cleanup();
-
-      // CRÍTICO: Limpar flag ao sair
-      if (global.setPasswordResetFlag) {
-        global.setPasswordResetFlag(false);
-      }
     };
   }, [cleanup]);
 
+  // Voltar para a página anterior
   const handleGoBack = () => {
-    console.log("🔙 [ResetPasswordScreen] Botão voltar pressionado");
-
-    // Limpar flag antes de voltar
-    if (global.setPasswordResetFlag) {
-      global.setPasswordResetFlag(false);
-    }
-
+    console.log("🔙 [ResetPasswordScreen] Voltar");
     navigation.goBack();
   };
 
@@ -89,6 +79,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
           icon="lock-closed"
         />
 
+        {/* Timer */}
         <View style={styles.timerContainer}>
           <Ionicons
             name={isExpired ? "time-outline" : "timer-outline"}
@@ -100,6 +91,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
           </Text>
         </View>
 
+        {/* Código de 8 dígitos */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Código de 8 dígitos</Text>
           <TokenInput
@@ -110,6 +102,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
           />
         </View>
 
+        {/* Nova Password */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Nova Password</Text>
           <AuthInput
@@ -131,6 +124,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
           />
         </View>
 
+        {/* Confirmar Password */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Confirmar Password</Text>
           <AuthInput
@@ -157,6 +151,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
           />
         </View>
 
+        {/* Botão Confirmar */}
         <AuthButton
           title="CONFIRMAR ALTERAÇÃO"
           onPress={handleVerifyAndReset}
@@ -165,6 +160,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
           style={styles.mainButton}
         />
 
+        {/* Botão Reenviar */}
         <AuthButton
           title={getResendText()}
           onPress={handleResendCode}
@@ -174,6 +170,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
           style={styles.resendButton}
         />
 
+        {/* Botão Voltar */}
         <TouchableOpacity
           style={styles.backButton}
           onPress={handleGoBack}
@@ -182,6 +179,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
           <Text style={styles.backText}>← Voltar</Text>
         </TouchableOpacity>
 
+        {/* Ajuda */}
         <View style={styles.helpContainer}>
           <Text style={styles.helpText}>📧 Não recebeste o código?</Text>
           <Text style={styles.helpSubtext}>

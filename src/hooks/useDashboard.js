@@ -1,7 +1,5 @@
 /**
- * 🎣 USE DASHBOARD HOOK - COM REFRESH DE SESSÃO
- *
- * SOLUÇÃO: Forçar refresh da sessão do Supabase antes de carregar dados
+ * 🎣 USE DASHBOARD HOOK - COM TIMEOUTS NAS QUERIES
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -25,6 +23,14 @@ import {
   convertWeight,
 } from "../utils/nutritionCalculations";
 import { useAuth } from "./useAuth";
+
+// Helper: Promise com timeout
+const withTimeout = (promise, ms, operation) => {
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`TIMEOUT: ${operation}`)), ms),
+  );
+  return Promise.race([promise, timeout]);
+};
 
 export const useDashboard = () => {
   const { user } = useAuth();
@@ -91,20 +97,26 @@ export const useDashboard = () => {
         return;
       }
 
-      // ✅ SOLUÇÃO DEFINITIVA: Simplesmente aguardar 1 segundo para estabilizar
-      console.log(
-        "⏳ [carregarDados] Aguardando 1 segundo para estabilizar...",
-      );
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log("✅ [carregarDados] Aguarda completada");
+      // Aguardar um momento para estabilizar
+      console.log("⏳ [carregarDados] Aguardando 500ms...");
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      console.log("📞 [carregarDados] Buscando profile...");
+      console.log("📞 [carregarDados] Buscando profile (timeout 10s)...");
 
-      const { data: profileDB, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+      // ✅ Query COM TIMEOUT
+      let profileDB, error;
+      try {
+        const result = await withTimeout(
+          supabase.from("profiles").select("*").eq("id", user.id).single(),
+          10000,
+          "fetch_profile",
+        );
+        profileDB = result.data;
+        error = result.error;
+      } catch (timeoutError) {
+        console.error("❌ [carregarDados] TIMEOUT na query!");
+        throw new Error("Timeout ao carregar dados. Tenta fazer refresh.");
+      }
 
       console.log(
         "📊 [carregarDados] Resposta - data:",
@@ -128,20 +140,31 @@ export const useDashboard = () => {
         if (!isToday(profileDB.ultima_data)) {
           console.log("🔄 [carregarDados] Fazendo reset diário...");
 
-          const { data: updatedProfile, error: updateError } = await supabase
-            .from("profiles")
-            .update({
-              agua_hoje: 0,
-              refeicoes_hoje: [],
-              ultima_data: hoje,
-            })
-            .eq("id", user.id)
-            .select()
-            .single();
+          try {
+            const { data: updatedProfile, error: updateError } =
+              await withTimeout(
+                supabase
+                  .from("profiles")
+                  .update({
+                    agua_hoje: 0,
+                    refeicoes_hoje: [],
+                    ultima_data: hoje,
+                  })
+                  .eq("id", user.id)
+                  .select()
+                  .single(),
+                5000,
+                "daily_reset",
+              );
 
-          if (!updateError && updatedProfile) {
-            dadosTratados = updatedProfile;
-            console.log("✅ [carregarDados] Reset diário OK");
+            if (!updateError && updatedProfile) {
+              dadosTratados = updatedProfile;
+              console.log("✅ [carregarDados] Reset diário OK");
+            }
+          } catch (e) {
+            console.warn(
+              "⚠️ [carregarDados] Reset diário falhou, continuando...",
+            );
           }
         }
 
@@ -168,8 +191,8 @@ export const useDashboard = () => {
         console.log("⚠️ [carregarDados] Nenhum profile encontrado");
       }
     } catch (e) {
-      console.error("❌ [carregarDados] EXCEÇÃO:", e);
-      Alert.alert("Erro", "Não foi possível carregar os dados.");
+      console.error("❌ [carregarDados] EXCEÇÃO:", e.message);
+      Alert.alert("Erro", e.message || "Não foi possível carregar os dados.");
     } finally {
       console.log("🏁 [carregarDados] FINALLY - setLoading(false)");
       setLoading(false);
@@ -178,7 +201,7 @@ export const useDashboard = () => {
     }
   };
 
-  // CARREGAMENTO AUTOMÁTICO NO MOUNT - COM PROTEÇÃO
+  // CARREGAMENTO AUTOMÁTICO NO MOUNT
   useEffect(() => {
     console.log(
       "🚀 [useEffect] MOUNT - user:",

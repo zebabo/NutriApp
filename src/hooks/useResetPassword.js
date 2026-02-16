@@ -1,13 +1,12 @@
 /**
- * 🔐 USE RESET PASSWORD HOOK - VERSÃO DE TESTE
+ * 🔐 USE RESET PASSWORD HOOK - VERSÃO SIMPLIFICADA
  *
- * PARA TESTAR: Podes forçar modo produção mudando FORCE_PRODUCTION para true
+ * Fluxo: Mudar password → OK no alert → Navegar para Login
  */
 
 import * as Haptics from "expo-haptics";
-import * as Updates from "expo-updates";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, DevSettings } from "react-native";
+import { Alert } from "react-native";
 import { supabase } from "../services/supabase";
 import {
   AUTH_ERRORS,
@@ -19,9 +18,6 @@ import {
   formatTimeRemaining,
   validateResetForm,
 } from "../utils/authValidation";
-
-// ✅ PARA TESTAR: Muda isto para true para simular PRODUÇÃO
-const FORCE_PRODUCTION_MODE = true;
 
 export const useResetPassword = (email, navigation) => {
   const [token, setToken] = useState("");
@@ -36,6 +32,7 @@ export const useResetPassword = (email, navigation) => {
   const [resendTimer, setResendTimer] = useState(RESEND_COOLDOWN);
   const [canResend, setCanResend] = useState(false);
 
+  // Timer para expiração do código
   useEffect(() => {
     if (timeLeft <= 0) {
       setIsExpired(true);
@@ -45,6 +42,7 @@ export const useResetPassword = (email, navigation) => {
     return () => clearInterval(interval);
   }, [timeLeft]);
 
+  // Timer para reenvio
   useEffect(() => {
     if (resendTimer <= 0) {
       setCanResend(true);
@@ -57,13 +55,28 @@ export const useResetPassword = (email, navigation) => {
     return () => clearInterval(interval);
   }, [resendTimer]);
 
+  /**
+   * Helper: Promise com timeout
+   */
+  const withTimeout = (promise, ms, operation) => {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`TIMEOUT: ${operation}`)), ms),
+    );
+    return Promise.race([promise, timeout]);
+  };
+
+  /**
+   * ✅ FUNÇÃO PRINCIPAL - COM TIMEOUTS DE SEGURANÇA
+   */
   const handleVerifyAndReset = async () => {
+    // Validar código expirado
     if (isExpired) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Código Expirado", "Por favor, solicita um novo código.");
       return false;
     }
 
+    // Validar formulário
     const validation = validateResetForm(token, newPassword, confirmPassword);
     if (!validation.valid) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -72,190 +85,153 @@ export const useResetPassword = (email, navigation) => {
     }
 
     console.log("🔐 [RESET] ========== INÍCIO ==========");
-
-    if (global.setPasswordResetFlag) {
-      await global.setPasswordResetFlag(true);
-      console.log("✅ [RESET] Flag ativada");
-    }
-
+    console.log("🔐 [RESET] Email:", email);
+    console.log("🔐 [RESET] Token length:", token.length);
     setIsVerifying(true);
 
     try {
-      // PASSO 1: verifyOtp
-      console.log("🔐 [RESET] PASSO 1: verifyOtp...");
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        email: email.trim(),
-        token: token.trim(),
-        type: "recovery",
-      });
+      // PASSO 1: Verificar código OTP (timeout 10s)
+      console.log("🔐 [RESET] Passo 1: Verificar código...");
+      let verifyResult;
+      try {
+        verifyResult = await withTimeout(
+          supabase.auth.verifyOtp({
+            email: email.trim(),
+            token: token.trim(),
+            type: "recovery",
+          }),
+          10000,
+          "verifyOtp",
+        );
+      } catch (timeoutError) {
+        console.error("❌ [RESET] Passo 1 TIMEOUT!");
+        throw new Error("Timeout ao verificar código. Verifica a tua conexão.");
+      }
 
-      if (verifyError) {
-        console.error("❌ [RESET] PASSO 1 FALHOU");
+      if (verifyResult.error) {
+        console.error(
+          "❌ [RESET] Código inválido:",
+          verifyResult.error.message,
+        );
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert("Código Inválido", AUTH_ERRORS.INVALID_TOKEN);
-        if (global.setPasswordResetFlag)
-          await global.setPasswordResetFlag(false);
         setIsVerifying(false);
         return false;
       }
-      console.log("✅ [RESET] PASSO 1 OK");
+      console.log("✅ [RESET] Passo 1 OK - Código verificado!");
 
-      // PASSO 2: updateUser COM TIMEOUT
-      console.log("🔐 [RESET] PASSO 2: updateUser (timeout 3s)...");
-
-      const updatePromise = supabase.auth.updateUser({ password: newPassword });
-      const updateTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("UPDATE_TIMEOUT")), 3000),
-      );
-
+      // PASSO 2: Atualizar password (timeout 10s)
+      console.log("🔐 [RESET] Passo 2: Atualizar password...");
+      let updateResult;
       try {
-        await Promise.race([updatePromise, updateTimeout]);
-        console.log("✅ [RESET] PASSO 2 OK");
-      } catch (err) {
-        if (err.message === "UPDATE_TIMEOUT") {
-          console.log("⚠️ [RESET] PASSO 2 TIMEOUT - continuando...");
-        } else {
-          throw err;
-        }
+        updateResult = await withTimeout(
+          supabase.auth.updateUser({ password: newPassword }),
+          10000,
+          "updateUser",
+        );
+      } catch (timeoutError) {
+        console.error("❌ [RESET] Passo 2 TIMEOUT!");
+        // Mesmo com timeout, a password pode ter sido alterada
+        // Continuamos para o logout
+        console.log("⚠️ [RESET] Continuando apesar do timeout...");
+        updateResult = { error: null };
       }
 
-      // PASSO 3: signOut COM TIMEOUT
-      console.log("🔐 [RESET] PASSO 3: signOut (timeout 2s)...");
+      if (updateResult.error) {
+        console.error(
+          "❌ [RESET] Erro ao atualizar:",
+          updateResult.error.message,
+        );
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("Erro", "Não foi possível atualizar a password.");
+        setIsVerifying(false);
+        return false;
+      }
+      console.log("✅ [RESET] Passo 2 OK - Password atualizada!");
 
-      const signOutPromise = supabase.auth.signOut();
-      const signOutTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("SIGNOUT_TIMEOUT")), 2000),
-      );
-
+      // PASSO 3: Fazer logout (timeout 5s, não bloqueia se falhar)
+      console.log("🔐 [RESET] Passo 3: Fazer logout...");
       try {
-        await Promise.race([signOutPromise, signOutTimeout]);
-        console.log("✅ [RESET] PASSO 3 OK");
-      } catch (err) {
-        if (err.message === "SIGNOUT_TIMEOUT") {
-          console.log("⚠️ [RESET] PASSO 3 TIMEOUT - continuando...");
-        } else {
-          throw err;
-        }
+        await withTimeout(supabase.auth.signOut(), 5000, "signOut");
+        console.log("✅ [RESET] Passo 3 OK - Logout feito!");
+      } catch (signOutError) {
+        console.warn("⚠️ [RESET] Passo 3 falhou/timeout, mas continuando...");
+        // Não bloqueamos - o importante é navegar para o login
       }
 
-      // PASSO 4: Aguardar
-      console.log("🔐 [RESET] PASSO 4: Aguardar 1s...");
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log("✅ [RESET] PASSO 4 OK");
-
-      // PASSO 5: Limpar
-      console.log("🔐 [RESET] PASSO 5: Limpar estados...");
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // PASSO 4: Limpar estados
+      console.log("🔐 [RESET] Passo 4: Limpar estados...");
       setIsVerifying(false);
-      console.log("✅ [RESET] PASSO 5 OK");
+      cleanup();
+      console.log("✅ [RESET] Passo 4 OK!");
 
-      // PASSO 6: Desativar flag
-      console.log("🔐 [RESET] PASSO 6: Desativar flag...");
-      if (global.setPasswordResetFlag) {
-        await global.setPasswordResetFlag(false);
-        console.log("✅ [RESET] PASSO 6 OK - Flag desativada");
+      // PASSO 5: Feedback
+      console.log("🔐 [RESET] Passo 5: Haptic feedback...");
+      try {
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        );
+      } catch (e) {
+        // Haptics pode falhar em alguns dispositivos
       }
+      console.log("✅ [RESET] Passo 5 OK!");
 
-      // PASSO 7: Mostrar alert e RECARREGAR
-      console.log("🔐 [RESET] PASSO 7: Mostrar Alert e preparar reload...");
-
+      // PASSO 6: Mostrar alert e navegar
+      console.log("🔐 [RESET] Passo 6: Mostrar alert...");
       Alert.alert(
         "✅ Password Alterada!",
-        "A tua password foi alterada com sucesso. A app vai recarregar.",
+        "A tua password foi alterada com sucesso. Faz login com a nova password.",
         [
           {
             text: "OK",
-            onPress: async () => {
-              console.log("✅ [RESET] User clicou OK");
-              console.log("🔄 [RESET] A RECARREGAR APP...");
-
-              // ✅ TESTE: Verifica qual modo está ativo
-              setTimeout(async () => {
-                try {
-                  const isDev = __DEV__ && !FORCE_PRODUCTION_MODE;
-
-                  console.log("📊 [RESET] __DEV__:", __DEV__);
-                  console.log(
-                    "📊 [RESET] FORCE_PRODUCTION_MODE:",
-                    FORCE_PRODUCTION_MODE,
-                  );
-                  console.log("📊 [RESET] isDev (final):", isDev);
-
-                  if (isDev) {
-                    // DESENVOLVIMENTO
-                    console.log("🔧 [RESET] ===== MODO DEV =====");
-                    console.log("🔧 [RESET] Usando DevSettings.reload()");
-                    if (DevSettings && DevSettings.reload) {
-                      DevSettings.reload();
-                    } else {
-                      console.warn("⚠️ [RESET] DevSettings não disponível");
-                      navigation.navigate("Auth");
-                    }
-                  } else {
-                    // PRODUÇÃO (real ou forçada)
-                    console.log("🚀 [RESET] ===== MODO PRODUÇÃO =====");
-                    console.log("🚀 [RESET] Usando Updates.reloadAsync()");
-
-                    try {
-                      await Updates.reloadAsync();
-                      console.log("✅ [RESET] Updates.reloadAsync() executado");
-                    } catch (updateError) {
-                      console.error(
-                        "❌ [RESET] Erro em Updates.reloadAsync():",
-                        updateError,
-                      );
-                      console.log("🔄 [RESET] Fallback: navegando para Auth");
-                      navigation.navigate("Auth");
-                    }
-                  }
-                } catch (error) {
-                  console.error("❌ [RESET] Erro geral ao recarregar:", error);
-                  navigation.navigate("Auth");
-                }
-              }, 500);
-
-              console.log("✅ [RESET] ========== COMPLETO ==========");
+            onPress: () => {
+              console.log("✅ [RESET] User clicou OK - navegando para Auth...");
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Auth" }],
+              });
             },
           },
         ],
         { cancelable: false },
       );
 
-      console.log("✅ [RESET] PASSO 7 OK - Alert mostrado");
-
+      console.log("✅ [RESET] ========== COMPLETO ==========");
       return true;
     } catch (error) {
-      console.error("❌ [RESET] EXCEÇÃO:", error);
-
+      console.error("❌ [RESET] ERRO GERAL:", error.message);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Erro", "Ocorreu um erro. Tenta novamente.");
+      Alert.alert("Erro", error.message || "Ocorreu um erro. Tenta novamente.");
 
+      // Tentar logout de emergência
       try {
-        const signOutPromise = supabase.auth.signOut();
-        const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("TIMEOUT")), 2000),
-        );
-        await Promise.race([signOutPromise, timeout]);
-      } catch (e) {}
+        await withTimeout(supabase.auth.signOut(), 2000, "emergencySignOut");
+      } catch (e) {
+        console.log("⚠️ [RESET] Logout de emergência falhou");
+      }
 
-      if (global.setPasswordResetFlag) await global.setPasswordResetFlag(false);
       setIsVerifying(false);
       return false;
     }
   };
 
+  /**
+   * Reenviar código
+   */
   const handleResendCode = async () => {
     if (!canResend) return false;
     setIsResending(true);
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+
       if (error) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert("Erro", "Não foi possível reenviar o código.");
         return false;
       }
 
+      // Reset dos timers
       setTimeLeft(TOKEN_EXPIRY_TIME);
       setIsExpired(false);
       setResendTimer(RESEND_COOLDOWN);
@@ -296,8 +272,10 @@ export const useResetPassword = (email, navigation) => {
   }, []);
 
   const getFormattedTime = () => formatTimeRemaining(timeLeft);
+
   const getResendText = () =>
     canResend ? "Reenviar código" : `Reenviar em ${resendTimer}s`;
+
   const canSubmit = () =>
     token.length === 8 &&
     newPassword.length >= 6 &&

@@ -1,7 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { AuthProvider } from "./src/contexts/AuthContext";
 import { useAuth } from "./src/hooks/useAuth";
@@ -17,127 +16,81 @@ import ResetPasswordScreen from "./src/screens/ResetPasswordScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 
 const Stack = createNativeStackNavigator();
-const RESET_PASSWORD_FLAG = "@is_resetting_password";
 
 function Navigation() {
   const { session, hasProfile, isLoading } = useAuth();
   const navigationRef = useRef(null);
-  const [isResettingPassword, setIsResettingPassword] = useState(false);
-  const lastNavigatedScreen = useRef(null);
+  const hasNavigated = useRef(false);
 
-  // Verificar flag ao montar
+  // ✅ Reset flag quando session muda (logout/login)
   useEffect(() => {
-    const checkResetFlag = async () => {
-      const flag = await AsyncStorage.getItem(RESET_PASSWORD_FLAG);
-      if (flag === "true") {
-        console.log("⚠️ [App] Flag de reset detectada");
-        setIsResettingPassword(true);
-      }
-    };
-    checkResetFlag();
-  }, []);
-
-  // Função global para controlar flag
-  useEffect(() => {
-    global.setPasswordResetFlag = async (value) => {
-      console.log(`🔧 [App] setPasswordResetFlag(${value})`);
-      setIsResettingPassword(value);
-      await AsyncStorage.setItem(RESET_PASSWORD_FLAG, value ? "true" : "false");
-    };
-
-    return () => {
-      delete global.setPasswordResetFlag;
-    };
-  }, []);
-
-  // Listener para detectar mudanças de tela
-  const onNavigationStateChange = (state) => {
-    if (!state) return;
-
-    const currentRoute = state.routes[state.index];
-    console.log(`🔍 [Navigation] State change: ${currentRoute?.name}`);
-
-    // ✅ FIX: Atualizar lastNavigatedScreen quando navega para Auth
-    if (currentRoute?.name === "Auth") {
-      console.log(
-        "🔄 [Navigation] Voltou para Auth - resetando lastNavigatedScreen",
-      );
-      lastNavigatedScreen.current = "Auth";
+    if (!session) {
+      hasNavigated.current = false;
     }
+  }, [session]);
 
-    // Bloquear navegação durante reset
-    if (isResettingPassword && currentRoute?.name !== "ResetPassword") {
-      console.log(`🚫 [Navigation] BLOQUEANDO ${currentRoute?.name}`);
-
-      setImmediate(() => {
-        if (navigationRef.current && isResettingPassword) {
-          try {
-            navigationRef.current.navigate("ResetPassword");
-            console.log("✅ [Navigation] Forçado ResetPassword");
-          } catch (e) {
-            console.error("❌ [Navigation] Erro:", e);
-          }
-        }
-      });
-    }
-  };
-
-  // Navegar explicitamente quando session/hasProfile mudam
+  // ✅ Navegação automática - SÓ navega uma vez após login
   useEffect(() => {
-    console.log("🔍 [Navigation] Estado mudou:", {
-      session: !!session,
-      hasProfile,
-      isLoading,
-      isResettingPassword,
-      lastScreen: lastNavigatedScreen.current,
-    });
-
-    // Ignorar se está em loading ou se flag está ativa
-    if (isLoading || isResettingPassword) {
-      console.log("⏸️ [Navigation] Aguardando (loading ou bloqueado)");
+    // Não fazer nada se estiver a carregar
+    if (isLoading) {
+      console.log("⏳ [Navigation] Aguardando isLoading...");
       return;
     }
 
-    // Determinar qual screen deve estar ativa
-    let targetScreen = null;
-
-    if (!session) {
-      targetScreen = "Auth";
-    } else if (hasProfile) {
-      targetScreen = "Dashboard";
-    } else {
-      targetScreen = "Form";
+    // Não fazer nada se não tiver navigationRef
+    if (!navigationRef.current) {
+      return;
     }
 
-    console.log(
-      `🎯 [Navigation] Target screen: ${targetScreen}, Current: ${lastNavigatedScreen.current}`,
-    );
+    const currentRoute = navigationRef.current.getCurrentRoute()?.name;
 
-    // Só navegar se o screen atual for diferente do target
+    console.log("🔍 [Navigation] Estado:", {
+      session: !!session,
+      hasProfile,
+      currentRoute,
+      hasNavigated: hasNavigated.current,
+    });
+
+    // Se não tem sessão e não está em Auth ou ResetPassword → ir para Auth
     if (
-      targetScreen &&
-      targetScreen !== lastNavigatedScreen.current &&
-      navigationRef.current
+      !session &&
+      currentRoute !== "Auth" &&
+      currentRoute !== "ResetPassword"
     ) {
-      console.log(`➡️ [Navigation] NAVEGANDO para ${targetScreen}...`);
-
-      setTimeout(() => {
-        if (navigationRef.current) {
-          try {
-            navigationRef.current.navigate(targetScreen);
-            lastNavigatedScreen.current = targetScreen;
-            console.log(`✅ [Navigation] Navegado para ${targetScreen}`);
-          } catch (error) {
-            console.error(
-              `❌ [Navigation] Erro ao navegar para ${targetScreen}:`,
-              error,
-            );
-          }
-        }
-      }, 500);
+      console.log("➡️ [Navigation] Sem sessão → Auth");
+      hasNavigated.current = false;
+      navigationRef.current.reset({
+        index: 0,
+        routes: [{ name: "Auth" }],
+      });
+      return;
     }
-  }, [session, hasProfile, isLoading, isResettingPassword]);
 
+    // ✅ Se tem sessão, está em Auth, e ainda não navegou → navegar
+    if (session && currentRoute === "Auth" && !hasNavigated.current) {
+      hasNavigated.current = true; // Marcar que já navegou
+
+      const target = hasProfile ? "Dashboard" : "Form";
+      console.log(`➡️ [Navigation] Com sessão → ${target}`);
+
+      navigationRef.current.reset({
+        index: 0,
+        routes: [{ name: target }],
+      });
+      return;
+    }
+
+    // ✅ Se está no Form mas já tem perfil → ir para Dashboard
+    if (session && currentRoute === "Form" && hasProfile) {
+      console.log("➡️ [Navigation] Tem perfil, saindo do Form → Dashboard");
+      navigationRef.current.reset({
+        index: 0,
+        routes: [{ name: "Dashboard" }],
+      });
+    }
+  }, [session, hasProfile, isLoading]);
+
+  // Loading screen
   if (isLoading) {
     return (
       <View
@@ -152,7 +105,7 @@ function Navigation() {
     );
   }
 
-  // Determinar initialRouteName baseado no estado atual
+  // Determinar rota inicial
   const getInitialRoute = () => {
     if (!session) return "Auth";
     if (hasProfile) return "Dashboard";
@@ -160,19 +113,16 @@ function Navigation() {
   };
 
   return (
-    <NavigationContainer
-      ref={navigationRef}
-      onStateChange={onNavigationStateChange}
-    >
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         screenOptions={{ headerShown: false }}
         initialRouteName={getInitialRoute()}
       >
-        {/* SEMPRE renderizar TODAS as screens */}
+        {/* Todas as screens disponíveis sempre */}
         <Stack.Screen name="Auth" component={AuthScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-        <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="Form" component={FormScreen} />
+        <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="Recipes" component={RecipesScreen} />
         <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} />
