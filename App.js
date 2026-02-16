@@ -23,7 +23,6 @@ function Navigation() {
   const { session, hasProfile, isLoading } = useAuth();
   const navigationRef = useRef(null);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
-  const blockNavigationRef = useRef(false);
   const lastNavigatedScreen = useRef(null);
 
   // Verificar flag ao montar
@@ -33,7 +32,6 @@ function Navigation() {
       if (flag === "true") {
         console.log("⚠️ [App] Flag de reset detectada");
         setIsResettingPassword(true);
-        blockNavigationRef.current = true;
       }
     };
     checkResetFlag();
@@ -44,7 +42,6 @@ function Navigation() {
     global.setPasswordResetFlag = async (value) => {
       console.log(`🔧 [App] setPasswordResetFlag(${value})`);
       setIsResettingPassword(value);
-      blockNavigationRef.current = value;
       await AsyncStorage.setItem(RESET_PASSWORD_FLAG, value ? "true" : "false");
     };
 
@@ -53,19 +50,27 @@ function Navigation() {
     };
   }, []);
 
-  // Listener para bloquear navegação durante reset
+  // Listener para detectar mudanças de tela
   const onNavigationStateChange = (state) => {
-    if (!state || !blockNavigationRef.current) return;
+    if (!state) return;
 
     const currentRoute = state.routes[state.index];
-
     console.log(`🔍 [Navigation] State change: ${currentRoute?.name}`);
 
-    if (blockNavigationRef.current && currentRoute?.name !== "ResetPassword") {
+    // ✅ FIX: Atualizar lastNavigatedScreen quando navega para Auth
+    if (currentRoute?.name === "Auth") {
+      console.log(
+        "🔄 [Navigation] Voltou para Auth - resetando lastNavigatedScreen",
+      );
+      lastNavigatedScreen.current = "Auth";
+    }
+
+    // Bloquear navegação durante reset
+    if (isResettingPassword && currentRoute?.name !== "ResetPassword") {
       console.log(`🚫 [Navigation] BLOQUEANDO ${currentRoute?.name}`);
 
       setImmediate(() => {
-        if (navigationRef.current && blockNavigationRef.current) {
+        if (navigationRef.current && isResettingPassword) {
           try {
             navigationRef.current.navigate("ResetPassword");
             console.log("✅ [Navigation] Forçado ResetPassword");
@@ -77,17 +82,18 @@ function Navigation() {
     }
   };
 
-  // NOVA LÓGICA: Navegar explicitamente quando session/hasProfile mudam
+  // Navegar explicitamente quando session/hasProfile mudam
   useEffect(() => {
     console.log("🔍 [Navigation] Estado mudou:", {
       session: !!session,
       hasProfile,
       isLoading,
-      blockNav: blockNavigationRef.current,
+      isResettingPassword,
+      lastScreen: lastNavigatedScreen.current,
     });
 
     // Ignorar se está em loading ou se flag está ativa
-    if (isLoading || blockNavigationRef.current) {
+    if (isLoading || isResettingPassword) {
       console.log("⏸️ [Navigation] Aguardando (loading ou bloqueado)");
       return;
     }
@@ -104,10 +110,10 @@ function Navigation() {
     }
 
     console.log(
-      `🎯 [Navigation] Target screen: ${targetScreen}, Last: ${lastNavigatedScreen.current}`,
+      `🎯 [Navigation] Target screen: ${targetScreen}, Current: ${lastNavigatedScreen.current}`,
     );
 
-    // Só navegar se mudou de screen
+    // Só navegar se o screen atual for diferente do target
     if (
       targetScreen &&
       targetScreen !== lastNavigatedScreen.current &&
@@ -115,7 +121,6 @@ function Navigation() {
     ) {
       console.log(`➡️ [Navigation] NAVEGANDO para ${targetScreen}...`);
 
-      // Pequeno delay para garantir que navigator está pronto
       setTimeout(() => {
         if (navigationRef.current) {
           try {
@@ -129,9 +134,9 @@ function Navigation() {
             );
           }
         }
-      }, 100);
+      }, 500);
     }
-  }, [session, hasProfile, isLoading]);
+  }, [session, hasProfile, isLoading, isResettingPassword]);
 
   if (isLoading) {
     return (

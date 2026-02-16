@@ -91,16 +91,35 @@ export const AuthProvider = ({ children }) => {
 
     // --- SUBSCREVER A MUDANÇAS DE AUTH ---
     const authSubscription = onAuthStateChange(async (event, newSession) => {
-      console.log("🔐 Auth event:", event);
+      console.log("🔐 ========== AUTH EVENT ==========");
+      console.log("Event:", event);
+      console.log("Session:", newSession ? "EXISTS" : "NULL");
+      console.log("User ID:", newSession?.user?.id);
+      console.log("================================");
 
       setSession(newSession);
 
       // Verificar perfil quando há sessão
       if (newSession) {
+        console.log("🔍 [AuthContext] A verificar perfil...");
+
         const { hasProfile: profileExists } = await checkUserProfile(
           newSession.user.id,
         );
+
+        console.log("📊 [AuthContext] Perfil existe:", profileExists);
+
+        // ✅ SOLUÇÃO 2: Adicionar delay de 300ms antes de atualizar estado
+        console.log(
+          "⏳ [AuthContext] Aguardando 300ms antes de atualizar hasProfile...",
+        );
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
         setHasProfile(profileExists);
+        console.log(
+          "✅ [AuthContext] hasProfile atualizado para:",
+          profileExists,
+        );
       } else {
         setHasProfile(false);
       }

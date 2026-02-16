@@ -1,12 +1,12 @@
 /**
- * 🎣 USE DASHBOARD HOOK - COM CARREGAMENTO AUTOMÁTICO
+ * 🎣 USE DASHBOARD HOOK - COM REFRESH DE SESSÃO
  *
- * Carrega dados automaticamente no mount via useEffect interno
+ * SOLUÇÃO: Forçar refresh da sessão do Supabase antes de carregar dados
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
 import { supabase } from "../services/supabase";
 import { MAX_HISTORY_DAYS, WATER_GOAL } from "../utils/dashboardConstants";
@@ -53,6 +53,10 @@ export const useDashboard = () => {
   const [favorites, setFavorites] = useState([]);
   const [showFavorites, setShowFavorites] = useState(false);
 
+  // Flags para controlar carregamento
+  const isFirstLoad = useRef(true);
+  const isLoadingRef = useRef(false);
+
   // ==========================================
   // CARREGAMENTO
   // ==========================================
@@ -70,7 +74,14 @@ export const useDashboard = () => {
   };
 
   const carregarDados = async () => {
+    // Evitar chamadas simultâneas
+    if (isLoadingRef.current) {
+      console.log("⚠️ [carregarDados] Já está a carregar - ignorando");
+      return;
+    }
+
     console.log("🚀 [carregarDados] INÍCIO");
+    isLoadingRef.current = true;
 
     try {
       console.log("🔍 [carregarDados] user.id:", user?.id);
@@ -79,6 +90,13 @@ export const useDashboard = () => {
         console.log("⚠️ [carregarDados] Sem user - abortando");
         return;
       }
+
+      // ✅ SOLUÇÃO DEFINITIVA: Simplesmente aguardar 1 segundo para estabilizar
+      console.log(
+        "⏳ [carregarDados] Aguardando 1 segundo para estabilizar...",
+      );
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log("✅ [carregarDados] Aguarda completada");
 
       console.log("📞 [carregarDados] Buscando profile...");
 
@@ -156,12 +174,18 @@ export const useDashboard = () => {
       console.log("🏁 [carregarDados] FINALLY - setLoading(false)");
       setLoading(false);
       setRefreshing(false);
+      isLoadingRef.current = false;
     }
   };
 
-  // ✅ CARREGAMENTO AUTOMÁTICO NO MOUNT
+  // CARREGAMENTO AUTOMÁTICO NO MOUNT - COM PROTEÇÃO
   useEffect(() => {
-    console.log("🚀 [useEffect] MOUNT - user:", !!user?.id);
+    console.log(
+      "🚀 [useEffect] MOUNT - user:",
+      !!user?.id,
+      "isFirstLoad:",
+      isFirstLoad.current,
+    );
 
     if (!user?.id) {
       console.log("⚠️ [useEffect] Sem user, aguardando...");
@@ -169,7 +193,14 @@ export const useDashboard = () => {
       return;
     }
 
+    // Só carregar se for a primeira vez
+    if (!isFirstLoad.current) {
+      console.log("⚠️ [useEffect] Não é primeira vez - ignorando");
+      return;
+    }
+
     console.log("📞 [useEffect] Iniciando carregamento...");
+    isFirstLoad.current = false;
 
     const carregar = async () => {
       setLoading(true);
@@ -178,10 +209,11 @@ export const useDashboard = () => {
     };
 
     carregar();
-  }, [user?.id]); // Re-carregar quando user.id mudar
+  }, [user?.id]);
 
   const inicializar = useCallback(async () => {
     console.log("🔄 [inicializar] Forçando reload...");
+    isFirstLoad.current = false;
     setLoading(true);
     await carregarPreferencias();
     await carregarDados();

@@ -1,13 +1,13 @@
 /**
- * 🔐 USE RESET PASSWORD HOOK - COM REFRESH FORÇADO
+ * 🔐 USE RESET PASSWORD HOOK - VERSÃO DE TESTE
  *
- * Força refresh completo da navegação após reset
+ * PARA TESTAR: Podes forçar modo produção mudando FORCE_PRODUCTION para true
  */
 
-import { CommonActions } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
+import * as Updates from "expo-updates";
 import { useCallback, useEffect, useState } from "react";
-import { Alert } from "react-native";
+import { Alert, DevSettings } from "react-native";
 import { supabase } from "../services/supabase";
 import {
   AUTH_ERRORS,
@@ -19,6 +19,9 @@ import {
   formatTimeRemaining,
   validateResetForm,
 } from "../utils/authValidation";
+
+// ✅ PARA TESTAR: Muda isto para true para simular PRODUÇÃO
+const FORCE_PRODUCTION_MODE = true;
 
 export const useResetPassword = (email, navigation) => {
   const [token, setToken] = useState("");
@@ -135,9 +138,9 @@ export const useResetPassword = (email, navigation) => {
         }
       }
 
-      // PASSO 4: Aguardar MAIS TEMPO para garantir que tudo processou
-      console.log("🔐 [RESET] PASSO 4: Aguardar 2s...");
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // PASSO 4: Aguardar
+      console.log("🔐 [RESET] PASSO 4: Aguardar 1s...");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       console.log("✅ [RESET] PASSO 4 OK");
 
       // PASSO 5: Limpar
@@ -153,33 +156,63 @@ export const useResetPassword = (email, navigation) => {
         console.log("✅ [RESET] PASSO 6 OK - Flag desativada");
       }
 
-      // PASSO 7: Aguardar MAIS para garantir que flag foi processada
-      console.log("🔐 [RESET] PASSO 7: Aguardar mais 500ms...");
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      console.log("✅ [RESET] PASSO 7 OK");
-
-      // PASSO 8: Mostrar alert e navegar com CommonActions
-      console.log("🔐 [RESET] PASSO 8: Mostrar Alert...");
+      // PASSO 7: Mostrar alert e RECARREGAR
+      console.log("🔐 [RESET] PASSO 7: Mostrar Alert e preparar reload...");
 
       Alert.alert(
-        "Sucesso!",
-        "A tua password foi alterada com sucesso. Faz login com a nova password.",
+        "✅ Password Alterada!",
+        "A tua password foi alterada com sucesso. A app vai recarregar.",
         [
           {
             text: "OK",
-            onPress: () => {
+            onPress: async () => {
               console.log("✅ [RESET] User clicou OK");
-              console.log(
-                "🔐 [RESET] PASSO 9: FORÇAR navegação com CommonActions...",
-              );
+              console.log("🔄 [RESET] A RECARREGAR APP...");
 
-              // Usar CommonActions.reset para FORÇAR reset completo do stack
-              navigation.dispatch(
-                CommonActions.reset({
-                  index: 0,
-                  routes: [{ name: "Auth" }],
-                }),
-              );
+              // ✅ TESTE: Verifica qual modo está ativo
+              setTimeout(async () => {
+                try {
+                  const isDev = __DEV__ && !FORCE_PRODUCTION_MODE;
+
+                  console.log("📊 [RESET] __DEV__:", __DEV__);
+                  console.log(
+                    "📊 [RESET] FORCE_PRODUCTION_MODE:",
+                    FORCE_PRODUCTION_MODE,
+                  );
+                  console.log("📊 [RESET] isDev (final):", isDev);
+
+                  if (isDev) {
+                    // DESENVOLVIMENTO
+                    console.log("🔧 [RESET] ===== MODO DEV =====");
+                    console.log("🔧 [RESET] Usando DevSettings.reload()");
+                    if (DevSettings && DevSettings.reload) {
+                      DevSettings.reload();
+                    } else {
+                      console.warn("⚠️ [RESET] DevSettings não disponível");
+                      navigation.navigate("Auth");
+                    }
+                  } else {
+                    // PRODUÇÃO (real ou forçada)
+                    console.log("🚀 [RESET] ===== MODO PRODUÇÃO =====");
+                    console.log("🚀 [RESET] Usando Updates.reloadAsync()");
+
+                    try {
+                      await Updates.reloadAsync();
+                      console.log("✅ [RESET] Updates.reloadAsync() executado");
+                    } catch (updateError) {
+                      console.error(
+                        "❌ [RESET] Erro em Updates.reloadAsync():",
+                        updateError,
+                      );
+                      console.log("🔄 [RESET] Fallback: navegando para Auth");
+                      navigation.navigate("Auth");
+                    }
+                  }
+                } catch (error) {
+                  console.error("❌ [RESET] Erro geral ao recarregar:", error);
+                  navigation.navigate("Auth");
+                }
+              }, 500);
 
               console.log("✅ [RESET] ========== COMPLETO ==========");
             },
@@ -188,7 +221,7 @@ export const useResetPassword = (email, navigation) => {
         { cancelable: false },
       );
 
-      console.log("✅ [RESET] PASSO 8 OK - Alert mostrado");
+      console.log("✅ [RESET] PASSO 7 OK - Alert mostrado");
 
       return true;
     } catch (error) {

@@ -1,13 +1,13 @@
 /**
- * 📊 DASHBOARD SCREEN - CORRIGIDO
- * 
- * FIX: Loading infinito resolvido
- * Adicionado useEffect para carregar no mount inicial
+ * 📊 DASHBOARD SCREEN - CORRIGIDO (SEM CHAMADA DUPLICADA)
+ *
+ * FIX: Removido inicializar() do useEffect
+ * O useDashboard já carrega automaticamente no mount
  */
 
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useEffect } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -16,17 +16,17 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { AchievementBanner } from '../components/Dashboard/AchievementBanner';
-import { AITipCard } from '../components/Dashboard/AITipCard';
-import { CaloriesCard } from '../components/Dashboard/CaloriesCard';
-import { MacrosCard } from '../components/Dashboard/MacrosCard';
-import { MealInput } from '../components/Dashboard/MealInput';
-import { MealList } from '../components/Dashboard/MealList';
-import { WaterCard } from '../components/Dashboard/WaterCard';
-import { WeightChart } from '../components/Dashboard/WeightChart';
-import { WeightProgress } from '../components/Dashboard/WeightProgress';
-import { useDashboard } from '../hooks/useDashboard';
+} from "react-native";
+import { AchievementBanner } from "../components/Dashboard/AchievementBanner";
+import { AITipCard } from "../components/Dashboard/AITipCard";
+import { CaloriesCard } from "../components/Dashboard/CaloriesCard";
+import { MacrosCard } from "../components/Dashboard/MacrosCard";
+import { MealInput } from "../components/Dashboard/MealInput";
+import { MealList } from "../components/Dashboard/MealList";
+import { WaterCard } from "../components/Dashboard/WaterCard";
+import { WeightChart } from "../components/Dashboard/WeightChart";
+import { WeightProgress } from "../components/Dashboard/WeightProgress";
+import { useDashboard } from "../hooks/useDashboard";
 
 export default function DashboardScreen({ navigation }) {
   const {
@@ -62,17 +62,16 @@ export default function DashboardScreen({ navigation }) {
     metaAgua,
   } = useDashboard();
 
-  // ✅ FIX: Carregar dados no mount inicial
-  useEffect(() => {
-    inicializar();
-  }, []); // Array vazio = só executa uma vez no mount
+  // ❌ REMOVIDO: useEffect com inicializar()
+  // O useDashboard já tem um useEffect interno que carrega automaticamente
 
-  // Opcional: Recarregar quando voltar ao screen
+  // ✅ MANTIDO: Opcional - recarregar quando voltar ao screen
   useFocusEffect(
     useCallback(() => {
-      // Não chamar inicializar() aqui para evitar duplicação
-      // Só use se quiser refresh ao voltar ao screen
-    }, [])
+      // Não fazer nada aqui - o useDashboard já gere tudo
+      // Só descomentar se quiseres refresh ao voltar:
+      // inicializar();
+    }, []),
   );
 
   if (loading) {
@@ -89,7 +88,7 @@ export default function DashboardScreen({ navigation }) {
       <View style={styles.header}>
         <Text style={styles.welcomeText}>O Teu Dashboard ⚡</Text>
         <TouchableOpacity
-          onPress={() => navigation.navigate('Settings')}
+          onPress={() => navigation.navigate("Settings")}
           style={styles.settingsBtn}
         >
           <Ionicons name="settings-outline" size={24} color="#FFF" />
@@ -102,7 +101,7 @@ export default function DashboardScreen({ navigation }) {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.tabInactive}
-          onPress={() => navigation.navigate('Recipes')}
+          onPress={() => navigation.navigate("Recipes")}
         >
           <Text style={styles.tabTextInactive}>Receitas 📖</Text>
         </TouchableOpacity>
@@ -117,7 +116,7 @@ export default function DashboardScreen({ navigation }) {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#32CD32"
-            colors={['#32CD32']}
+            colors={["#32CD32"]}
           />
         }
       >
@@ -166,10 +165,7 @@ export default function DashboardScreen({ navigation }) {
           onRemove={removerAlimento}
         />
 
-        <WeightChart
-          historico={perfil?.historico}
-          unidade={unidade}
-        />
+        <WeightChart historico={perfil?.historico} unidade={unidade} />
 
         <WeightProgress
           pesoAtual={perfil?.pesoAtual}
@@ -184,7 +180,9 @@ export default function DashboardScreen({ navigation }) {
         <View style={styles.historySection}>
           <Text style={styles.sectionTitle}>Histórico Completo</Text>
           <TouchableOpacity
-            onPress={() => navigation.navigate('History', { historico: perfil?.historico })}
+            onPress={() =>
+              navigation.navigate("History", { historico: perfil?.historico })
+            }
             style={styles.historyBtn}
           >
             <Text style={styles.historyBtnText}>Ver Tudo</Text>
@@ -195,96 +193,98 @@ export default function DashboardScreen({ navigation }) {
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: "#121212",
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#121212',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#121212",
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
-    color: '#FFF',
-    marginTop: 12,
+    color: "#666",
+    marginTop: 10,
     fontSize: 14,
   },
   header: {
-    marginTop: 60,
-    marginBottom: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
   },
   welcomeText: {
-    color: '#FFF',
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFF",
   },
   settingsBtn: {
-    backgroundColor: '#1E1E1E',
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#333',
+    padding: 8,
   },
   tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#1E1E1E',
-    borderRadius: 12,
-    padding: 5,
-    marginHorizontal: 20,
-    marginBottom: 20,
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    marginBottom: 10,
   },
   tabActive: {
     flex: 1,
-    backgroundColor: '#32CD32',
     paddingVertical: 10,
+    backgroundColor: "#32CD32",
     borderRadius: 10,
-    alignItems: 'center',
+    marginRight: 5,
+    alignItems: "center",
   },
   tabInactive: {
     flex: 1,
     paddingVertical: 10,
-    alignItems: 'center',
+    backgroundColor: "#1E1E1E",
+    borderRadius: 10,
+    marginLeft: 5,
+    alignItems: "center",
   },
   tabTextActive: {
-    color: '#000',
-    fontWeight: 'bold',
+    color: "#000",
+    fontWeight: "bold",
+    fontSize: 14,
   },
   tabTextInactive: {
-    color: '#666',
-    fontWeight: 'bold',
+    color: "#666",
+    fontSize: 14,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 50,
+    padding: 20,
   },
   historySection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
+    marginTop: 20,
+    marginBottom: 10,
   },
   sectionTitle: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FFF",
+    marginBottom: 10,
   },
   historyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1E1E1E",
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#32CD32",
   },
   historyBtnText: {
-    color: '#32CD32',
-    fontSize: 14,
-    fontWeight: '600',
+    color: "#32CD32",
+    fontWeight: "bold",
+    marginRight: 5,
   },
 });
