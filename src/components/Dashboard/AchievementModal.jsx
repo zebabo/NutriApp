@@ -6,13 +6,14 @@
 import * as Haptics from "expo-haptics";
 import { useEffect, useRef } from "react";
 import {
-    Animated,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { COLORS } from "../../utils/theme";
 
 export const AchievementModal = ({ achievement, onClose }) => {
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -110,19 +111,19 @@ const styles = StyleSheet.create({
     padding: 30,
   },
   card: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: COLORS.surface,
     borderRadius: 24,
     padding: 30,
     alignItems: "center",
     width: "100%",
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: COLORS.surfaceHigh,
   },
   iconCircle: {
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: "#121212",
+    backgroundColor: COLORS.background,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
@@ -132,7 +133,7 @@ const styles = StyleSheet.create({
     fontSize: 44,
   },
   label: {
-    color: "#666",
+    color: COLORS.textSecondary,
     fontSize: 11,
     fontWeight: "bold",
     letterSpacing: 1.5,
@@ -140,7 +141,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   title: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
     fontSize: 24,
     fontWeight: "bold",
     textAlign: "center",

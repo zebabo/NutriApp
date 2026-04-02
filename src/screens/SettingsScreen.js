@@ -21,6 +21,7 @@ import {
   scheduleDailyQuote,
   scheduleWaterReminder,
 } from "../services/notificationService";
+import { COLORS } from "../utils/theme";
 
 export default function SettingsScreen({ navigation }) {
   const { user, refreshProfile } = useAuth();
@@ -127,7 +128,7 @@ export default function SettingsScreen({ navigation }) {
           <Ionicons
             name="mail-outline"
             size={20}
-            color="#32CD32"
+            color={COLORS.primary}
             style={{ marginRight: 15 }}
           />
           <Text style={styles.settingLabel}>
@@ -146,8 +147,11 @@ export default function SettingsScreen({ navigation }) {
           <Switch
             value={waterReminders}
             onValueChange={toggleWaterReminders}
-            trackColor={{ false: "#333", true: "#1A331A" }}
-            thumbColor={waterReminders ? "#32CD32" : "#f4f3f4"}
+            trackColor={{
+              false: COLORS.surfaceBorder,
+              true: COLORS.primaryMuted,
+            }}
+            thumbColor={waterReminders ? COLORS.primary : "#f4f3f4"}
           />
         </View>
 
@@ -162,7 +166,7 @@ export default function SettingsScreen({ navigation }) {
                 Atualmente: a cada {waterInterval}h
               </Text>
             </View>
-            <Ionicons name="time-outline" size={20} color="#32CD32" />
+            <Ionicons name="time-outline" size={20} color={COLORS.primary} />
           </TouchableOpacity>
         )}
 
@@ -174,8 +178,11 @@ export default function SettingsScreen({ navigation }) {
           <Switch
             value={dailyQuote}
             onValueChange={toggleDailyQuote}
-            trackColor={{ false: "#333", true: "#1A331A" }}
-            thumbColor={dailyQuote ? "#32CD32" : "#f4f3f4"}
+            trackColor={{
+              false: COLORS.surfaceBorder,
+              true: COLORS.primaryMuted,
+            }}
+            thumbColor={dailyQuote ? COLORS.primary : "#f4f3f4"}
           />
         </View>
 
@@ -187,7 +194,7 @@ export default function SettingsScreen({ navigation }) {
             <Text style={styles.settingLabel}>Exportar Histórico</Text>
             <Text style={styles.settingDesc}>Gerar relatório em PDF</Text>
           </View>
-          <Ionicons name="download-outline" size={20} color="#32CD32" />
+          <Ionicons name="download-outline" size={20} color={COLORS.primary} />
         </TouchableOpacity>
 
         {/* ===== FERRAMENTAS DE DESENVOLVIMENTO ===== */}
@@ -239,7 +246,7 @@ export default function SettingsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: COLORS.textInverse,
   },
   header: {
     marginTop: 70,
@@ -249,14 +256,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: "bold",
-    color: "#FFF",
+    color: COLORS.textPrimary,
   },
   content: {
     padding: 25,
     paddingBottom: 50,
   },
   sectionTitle: {
-    color: "#32CD32",
+    color: COLORS.primary,
     fontSize: 13,
     fontWeight: "bold",
     marginBottom: 15,
@@ -267,26 +274,26 @@ const styles = StyleSheet.create({
   settingItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1E1E1E",
+    backgroundColor: COLORS.surface,
     padding: 18,
     borderRadius: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.surfaceBorder,
   },
   settingLabel: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
     fontSize: 16,
     fontWeight: "bold",
   },
   settingDesc: {
-    color: "#888",
+    color: COLORS.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
   versionText: {
     textAlign: "center",
-    color: "#444",
+    color: COLORS.textMuted,
     marginTop: 30,
     fontSize: 12,
     marginBottom: 20,
@@ -325,7 +332,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   devWarning: {
-    color: "#999",
+    color: COLORS.textSecondary,
     fontSize: 11,
     textAlign: "center",
     marginTop: 10,

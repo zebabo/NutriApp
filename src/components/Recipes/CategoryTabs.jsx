@@ -1,73 +1,70 @@
-/**
- * 📑 CATEGORY TABS
- * Tabs horizontais para categorias
- */
+import { ScrollView, StyleSheet, Text, TouchableOpacity } from "react-native";
+import { CATEGORIES } from "../../utils/recipeConstants";
+import { COLORS } from "../../utils/theme";
 
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { CATEGORIES } from '../../utils/recipeConstants';
-
-export const CategoryTabs = ({ activeCategory, onCategoryChange, favoritesCount = 0 }) => {
-  return (
-    <View style={styles.container}>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {CATEGORIES.map((cat) => {
-          const isActive = activeCategory === cat.label;
-          const isFavorites = cat.id === 'favorites';
-          const count = isFavorites ? favoritesCount : null;
-
-          return (
-            <TouchableOpacity
-              key={cat.id}
-              onPress={() => onCategoryChange(cat.label)}
-              style={[styles.tab, isActive && styles.tabActive]}
-            >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {cat.icon} {cat.label}
-                {count !== null && count > 0 && (
-                  <Text style={styles.count}> ({count})</Text>
-                )}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-};
+export const CategoryTabs = ({
+  activeCategory,
+  onCategoryChange,
+  favoritesCount,
+}) => (
+  <ScrollView
+    horizontal
+    showsHorizontalScrollIndicator={false}
+    style={styles.container}
+    contentContainerStyle={styles.content}
+  >
+    {CATEGORIES.map((cat) => {
+      const isActive = activeCategory === cat.id;
+      const label =
+        cat.id === "favorites"
+          ? `${cat.icon} Favoritos (${favoritesCount})`
+          : `${cat.icon} ${cat.label}`;
+      return (
+        <TouchableOpacity
+          key={cat.id}
+          style={[styles.tab, isActive && styles.tabActive]}
+          onPress={() => onCategoryChange(cat.id)}
+        >
+          <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+            {label}
+          </Text>
+        </TouchableOpacity>
+      );
+    })}
+  </ScrollView>
+);
 
 const styles = StyleSheet.create({
   container: {
-    height: 50,
-    marginBottom: 20,
+    flexGrow: 0,
+    flexShrink: 0,
+    marginBottom: 16,
   },
-  scrollContent: {
+  content: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     paddingRight: 20,
   },
   tab: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginRight: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#1E1E1E',
-    height: 40,
-    justifyContent: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
+    alignSelf: "flex-start",
   },
   tabActive: {
-    backgroundColor: '#32CD32',
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   tabText: {
-    color: '#666',
-    fontWeight: 'bold',
-    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: "600",
   },
   tabTextActive: {
-    color: '#000',
-  },
-  count: {
-    fontSize: 12,
+    color: COLORS.textInverse,
   },
 });

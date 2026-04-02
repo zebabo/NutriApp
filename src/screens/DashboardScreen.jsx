@@ -27,6 +27,7 @@ import { WaterCard } from "../components/Dashboard/WaterCard";
 import { WeightChart } from "../components/Dashboard/WeightChart";
 import { WeightProgress } from "../components/Dashboard/WeightProgress";
 import { useDashboard } from "../hooks/useDashboard";
+import { COLORS } from "../utils/theme";
 
 export default function DashboardScreen({ navigation }) {
   const {
@@ -71,7 +72,7 @@ export default function DashboardScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#32CD32" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>A carregar...</Text>
       </View>
     );
@@ -99,8 +100,8 @@ export default function DashboardScreen({ navigation }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#32CD32"
-            colors={["#32CD32"]}
+            tintColor={COLORS.primary}
+            colors={[COLORS.primary]}
           />
         }
       >
@@ -171,16 +172,16 @@ export default function DashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: COLORS.background,
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
-    color: "#666",
+    color: COLORS.textSecondary,
     marginTop: 10,
     fontSize: 14,
   },
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#FFF",
+    color: COLORS.textPrimary,
   },
 
   scrollView: {
@@ -211,21 +212,21 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#FFF",
+    color: COLORS.textPrimary,
     marginBottom: 10,
   },
   historyBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1E1E1E",
+    backgroundColor: COLORS.surface,
     padding: 15,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#32CD32",
+    borderColor: COLORS.primary,
   },
   historyBtnText: {
-    color: "#32CD32",
+    color: COLORS.primary,
     fontWeight: "bold",
     marginRight: 5,
   },

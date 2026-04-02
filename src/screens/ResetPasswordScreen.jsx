@@ -1,8 +1,3 @@
-/**
- * 🔐 RESET PASSWORD SCREEN - VERSÃO SIMPLIFICADA
- * Sem flags globais, sem complexidade desnecessária
- */
-
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect } from "react";
 import {
@@ -19,13 +14,12 @@ import { AuthHeader } from "../components/Auth/AuthHeader";
 import { AuthInput } from "../components/Auth/AuthInput";
 import { TokenInput } from "../components/Auth/TokenInput";
 import { useResetPassword } from "../hooks/useResetPassword";
+import { COLORS } from "../utils/theme";
 
 export default function ResetPasswordScreen({ route, navigation }) {
   const email = route.params?.email || "";
-
   const {
     token,
-    setToken,
     newPassword,
     setNewPassword,
     confirmPassword,
@@ -48,20 +42,9 @@ export default function ResetPasswordScreen({ route, navigation }) {
     canSubmit,
   } = useResetPassword(email, navigation);
 
-  // Cleanup ao desmontar
   useEffect(() => {
-    console.log("🟢 [ResetPasswordScreen] Montado");
-    return () => {
-      console.log("🔴 [ResetPasswordScreen] Desmontando");
-      cleanup();
-    };
+    return () => cleanup();
   }, [cleanup]);
-
-  // Voltar para a página anterior
-  const handleGoBack = () => {
-    console.log("🔙 [ResetPasswordScreen] Voltar");
-    navigation.goBack();
-  };
 
   return (
     <KeyboardAvoidingView
@@ -79,19 +62,17 @@ export default function ResetPasswordScreen({ route, navigation }) {
           icon="lock-closed"
         />
 
-        {/* Timer */}
         <View style={styles.timerContainer}>
           <Ionicons
             name={isExpired ? "time-outline" : "timer-outline"}
             size={16}
-            color={isExpired ? "#FF6B6B" : "#32CD32"}
+            color={isExpired ? COLORS.danger : COLORS.primary}
           />
           <Text style={[styles.timerText, isExpired && styles.timerExpired]}>
             {isExpired ? "Código expirado" : `Expira em: ${getFormattedTime()}`}
           </Text>
         </View>
 
-        {/* Código de 8 dígitos */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Código de 8 dígitos</Text>
           <TokenInput
@@ -102,7 +83,6 @@ export default function ResetPasswordScreen({ route, navigation }) {
           />
         </View>
 
-        {/* Nova Password */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Nova Password</Text>
           <AuthInput
@@ -117,14 +97,13 @@ export default function ResetPasswordScreen({ route, navigation }) {
                 <Ionicons
                   name={showPassword ? "eye-off" : "eye"}
                   size={20}
-                  color="#666"
+                  color={COLORS.textMuted}
                 />
               </TouchableOpacity>
             }
           />
         </View>
 
-        {/* Confirmar Password */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Confirmar Password</Text>
           <AuthInput
@@ -144,123 +123,61 @@ export default function ResetPasswordScreen({ route, navigation }) {
                 <Ionicons
                   name={showConfirmPassword ? "eye-off" : "eye"}
                   size={20}
-                  color="#666"
+                  color={COLORS.textMuted}
                 />
               </TouchableOpacity>
             }
           />
         </View>
 
-        {/* Botão Confirmar */}
         <AuthButton
-          title="CONFIRMAR ALTERAÇÃO"
+          title="REDEFINIR PASSWORD"
           onPress={handleVerifyAndReset}
           loading={isVerifying}
           disabled={!canSubmit()}
-          style={styles.mainButton}
         />
 
-        {/* Botão Reenviar */}
-        <AuthButton
-          title={getResendText()}
-          onPress={handleResendCode}
-          loading={isResending}
-          disabled={!canResend}
-          variant="secondary"
-          style={styles.resendButton}
-        />
-
-        {/* Botão Voltar */}
         <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleGoBack}
-          disabled={isVerifying || isResending}
+          style={[styles.resendBtn, !canResend && styles.resendBtnDisabled]}
+          onPress={handleResendCode}
+          disabled={!canResend || isResending}
         >
-          <Text style={styles.backText}>← Voltar</Text>
-        </TouchableOpacity>
-
-        {/* Ajuda */}
-        <View style={styles.helpContainer}>
-          <Text style={styles.helpText}>📧 Não recebeste o código?</Text>
-          <Text style={styles.helpSubtext}>
-            Verifica a pasta de spam ou tenta reenviar.
+          <Text
+            style={[styles.resendText, !canResend && styles.resendTextDisabled]}
+          >
+            {getResendText()}
           </Text>
-        </View>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#121212",
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: 25,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  scrollContainer: { flexGrow: 1, padding: 25, paddingTop: 60 },
   timerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(50, 205, 50, 0.1)",
+    gap: 8,
+    marginBottom: 24,
+    backgroundColor: COLORS.surface,
     padding: 12,
     borderRadius: 10,
-    marginBottom: 24,
-    gap: 8,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
   },
-  timerText: {
-    color: "#32CD32",
+  timerText: { color: COLORS.primary, fontSize: 14, fontWeight: "600" },
+  timerExpired: { color: COLORS.danger },
+  section: { marginBottom: 20 },
+  sectionLabel: {
+    color: COLORS.textSecondary,
     fontSize: 13,
     fontWeight: "600",
-  },
-  timerExpired: {
-    color: "#FF6B6B",
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionLabel: {
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: "600",
     marginBottom: 8,
-    marginLeft: 4,
   },
-  mainButton: {
-    marginTop: 10,
-  },
-  resendButton: {
-    marginTop: 12,
-  },
-  backButton: {
-    marginTop: 20,
-    alignItems: "center",
-    padding: 10,
-  },
-  backText: {
-    color: "#666",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  helpContainer: {
-    marginTop: 30,
-    alignItems: "center",
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#2A2A2A",
-  },
-  helpText: {
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 6,
-  },
-  helpSubtext: {
-    color: "#666",
-    fontSize: 12,
-    textAlign: "center",
-  },
+  resendBtn: { marginTop: 16, alignItems: "center", padding: 12 },
+  resendBtnDisabled: { opacity: 0.5 },
+  resendText: { color: COLORS.primary, fontSize: 14, fontWeight: "600" },
+  resendTextDisabled: { color: COLORS.textMuted },
 });

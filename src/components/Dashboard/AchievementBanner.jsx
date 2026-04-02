@@ -12,6 +12,7 @@ import {
   STREAK_EMOJIS,
   STREAK_MILESTONES,
 } from "../../utils/dashboardConstants";
+import { COLORS } from "../../utils/theme";
 
 // Próximo milestone do streak
 const getNextMilestone = (streak) => {
@@ -129,8 +130,8 @@ const styles = StyleSheet.create({
     borderColor: "rgba(50, 205, 50, 0.25)",
   },
   goalEmoji: { fontSize: 24 },
-  goalTitle: { color: "#32CD32", fontWeight: "bold", fontSize: 14 },
-  goalSub: { color: "#666", fontSize: 12, marginTop: 2 },
+  goalTitle: { color: COLORS.primary, fontWeight: "bold", fontSize: 14 },
+  goalSub: { color: COLORS.textSecondary, fontSize: 12, marginTop: 2 },
   // Streak
   streakRow: {
     backgroundColor: "rgba(255, 107, 53, 0.08)",
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
   },
   streakEmoji: { fontSize: 26 },
   streakTitle: { color: "#FF6B35", fontWeight: "bold", fontSize: 14 },
-  streakSub: { color: "#666", fontSize: 12, marginTop: 2 },
+  streakSub: { color: COLORS.textSecondary, fontSize: 12, marginTop: 2 },
   streakBadge: {
     marginLeft: "auto",
     backgroundColor: "rgba(255, 107, 53, 0.15)",
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: COLORS.surfaceHigh,
   },
   achievementsLabel: {
     color: "#555",
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
     fontSize: 30,
   },
   badgeTitle: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
     fontSize: 10,
     fontWeight: "bold",
     textAlign: "center",

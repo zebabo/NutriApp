@@ -5,16 +5,17 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useProfileEdit } from "../hooks/useProfileEdit";
+import { COLORS } from "../utils/theme";
 
 // ─── Componentes internos ─────────────────────────────────────────────────────
 
@@ -69,7 +70,7 @@ export default function ProfileScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#32CD32" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
@@ -116,8 +117,8 @@ export default function ProfileScreen({ navigation }) {
           <Switch
             value={unidade === "Imperial"}
             onValueChange={(v) => setUnidade(v ? "Imperial" : "Metric")}
-            trackColor={{ false: "#333", true: "#32CD32" }}
-            thumbColor="#FFF"
+            trackColor={{ false: COLORS.surfaceBorder, true: COLORS.primary }}
+            thumbColor={COLORS.textPrimary}
           />
         </View>
       </View>
@@ -131,7 +132,7 @@ export default function ProfileScreen({ navigation }) {
             value={nome}
             onChangeText={setNome}
             placeholder="O teu nome"
-            placeholderTextColor="#555"
+            placeholderTextColor={COLORS.textMuted}
           />
         </FieldRow>
 
@@ -144,7 +145,7 @@ export default function ProfileScreen({ navigation }) {
               value={idade}
               onChangeText={setIdade}
               placeholder="25"
-              placeholderTextColor="#555"
+              placeholderTextColor={COLORS.textMuted}
               keyboardType="numeric"
               maxLength={3}
             />
@@ -169,7 +170,7 @@ export default function ProfileScreen({ navigation }) {
                 <Ionicons
                   name={g.icon}
                   size={16}
-                  color={sexo === g.value ? "#000" : "#666"}
+                  color={sexo === g.value ? "#000" : COLORS.textSecondary}
                 />
                 <Text
                   style={[
@@ -195,7 +196,7 @@ export default function ProfileScreen({ navigation }) {
               value={altura}
               onChangeText={setAltura}
               placeholder="170"
-              placeholderTextColor="#555"
+              placeholderTextColor={COLORS.textMuted}
               keyboardType="decimal-pad"
             />
             <Text style={styles.suffix}>{heightUnit}</Text>
@@ -211,7 +212,7 @@ export default function ProfileScreen({ navigation }) {
               value={pesoAtual}
               onChangeText={setPesoAtual}
               placeholder="70"
-              placeholderTextColor="#555"
+              placeholderTextColor={COLORS.textMuted}
               keyboardType="decimal-pad"
             />
             <Text style={styles.suffix}>{weightUnit}</Text>
@@ -227,7 +228,7 @@ export default function ProfileScreen({ navigation }) {
               value={pesoAlvo}
               onChangeText={setPesoAlvo}
               placeholder="65"
-              placeholderTextColor="#555"
+              placeholderTextColor={COLORS.textMuted}
               keyboardType="decimal-pad"
             />
             <Text style={styles.suffix}>{weightUnit}</Text>
@@ -278,7 +279,11 @@ export default function ProfileScreen({ navigation }) {
                 <Ionicons
                   name={level.icon}
                   size={20}
-                  color={atividade === level.value ? "#32CD32" : "#555"}
+                  color={
+                    atividade === level.value
+                      ? COLORS.primary
+                      : COLORS.textMuted
+                  }
                 />
                 <View style={styles.activityText}>
                   <Text
@@ -293,7 +298,11 @@ export default function ProfileScreen({ navigation }) {
                 </View>
               </View>
               {atividade === level.value && (
-                <Ionicons name="checkmark-circle" size={22} color="#32CD32" />
+                <Ionicons
+                  name="checkmark-circle"
+                  size={22}
+                  color={COLORS.primary}
+                />
               )}
             </TouchableOpacity>
             {index < ACTIVITY_LEVELS.length - 1 && <Divider />}
@@ -308,10 +317,10 @@ export default function ProfileScreen({ navigation }) {
         onPress={() => navigation.navigate("History", { historico: [] })}
       >
         <View style={styles.linkLeft}>
-          <Ionicons name="bar-chart-outline" size={20} color="#32CD32" />
+          <Ionicons name="bar-chart-outline" size={20} color={COLORS.primary} />
           <Text style={styles.linkText}>Ver Histórico de Peso</Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color="#555" />
+        <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
       </TouchableOpacity>
 
       {/* ── Logout ─────────────────────────────────────────────────────── */}
@@ -330,7 +339,7 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: COLORS.textInverse,
   },
   content: {
     padding: 20,
@@ -338,7 +347,7 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: COLORS.textInverse,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -350,12 +359,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
     fontSize: 24,
     fontWeight: "bold",
   },
   saveBtn: {
-    backgroundColor: "#32CD32",
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 20,
     paddingVertical: 9,
     borderRadius: 20,
@@ -369,7 +378,7 @@ const styles = StyleSheet.create({
   },
   // Sections
   sectionTitle: {
-    color: "#555",
+    color: COLORS.textMuted,
     fontSize: 11,
     fontWeight: "bold",
     letterSpacing: 1.5,
@@ -378,11 +387,11 @@ const styles = StyleSheet.create({
   },
   // Cards
   card: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: COLORS.surface,
     borderRadius: 16,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: COLORS.surfaceHigh,
   },
   switchRow: {
     flexDirection: "row",
@@ -392,7 +401,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: COLORS.surfaceHigh,
   },
   // Fields
   fieldRow: {
@@ -403,13 +412,13 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   fieldLabel: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
     fontSize: 15,
     fontWeight: "500",
     flex: 1,
   },
   fieldSub: {
-    color: "#666",
+    color: COLORS.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
@@ -423,7 +432,7 @@ const styles = StyleSheet.create({
   },
   // Inputs
   input: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
     fontSize: 15,
     textAlign: "right",
     minWidth: 120,
@@ -439,7 +448,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   suffix: {
-    color: "#666",
+    color: COLORS.textSecondary,
     fontSize: 13,
   },
   // Toggle (Sexo)
@@ -455,14 +464,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: COLORS.surfaceHigh,
     gap: 6,
   },
   toggleBtnActive: {
-    backgroundColor: "#32CD32",
+    backgroundColor: COLORS.primary,
   },
   toggleText: {
-    color: "#666",
+    color: COLORS.textSecondary,
     fontSize: 13,
     fontWeight: "600",
   },
@@ -474,14 +483,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: COLORS.surfaceHigh,
     alignItems: "center",
   },
   objetivoBtnActive: {
-    backgroundColor: "#32CD32",
+    backgroundColor: COLORS.primary,
   },
   objetivoText: {
-    color: "#666",
+    color: COLORS.textSecondary,
     fontSize: 13,
     fontWeight: "600",
   },
@@ -505,28 +514,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   activityTitle: {
-    color: "#888",
+    color: COLORS.textSecondary,
     fontSize: 14,
     fontWeight: "600",
   },
   activityTitleActive: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
   },
   activityDesc: {
-    color: "#555",
+    color: COLORS.textMuted,
     fontSize: 12,
     marginTop: 2,
   },
   // Link card
   linkCard: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: COLORS.surface,
     borderRadius: 16,
     padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: COLORS.surfaceHigh,
   },
   linkLeft: {
     flexDirection: "row",
@@ -534,7 +543,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   linkText: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
     fontSize: 15,
     fontWeight: "500",
   },

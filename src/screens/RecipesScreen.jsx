@@ -1,11 +1,3 @@
-/**
- * 🍽️ RECIPES SCREEN
- *
- * Header: "Cozinha Lusa 🇵🇹" + GoalBadge
- * Tab switcher: Dashboard | Receitas 📖 (ativo)
- * Conteúdo: SearchBar + CategoryTabs + FlatList
- */
-
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useEffect } from "react";
 import {
@@ -22,6 +14,7 @@ import { GoalBadge } from "../components/Recipes/GoalBadge";
 import { RecipeCard } from "../components/Recipes/RecipeCard";
 import { SearchBar } from "../components/Recipes/SearchBar";
 import { useRecipes } from "../hooks/useRecipes";
+import { COLORS } from "../utils/theme";
 
 export default function RecipesScreen({ navigation }) {
   const {
@@ -49,7 +42,7 @@ export default function RecipesScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#32CD32" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>A carregar receitas...</Text>
       </View>
     );
@@ -66,7 +59,7 @@ export default function RecipesScreen({ navigation }) {
   );
 
   const renderEmpty = () => {
-    if (pesquisa.length > 0) {
+    if (pesquisa.length > 0)
       return (
         <EmptyState
           icon="search-outline"
@@ -74,16 +67,14 @@ export default function RecipesScreen({ navigation }) {
           message={`Não encontrámos receitas para "${pesquisa}"`}
         />
       );
-    }
-    if (categoriaAtiva === "Favoritos") {
+    if (categoriaAtiva === "Favoritos")
       return (
         <EmptyState
           icon="heart-outline"
           title="Sem favoritos"
-          message="Toca no ❤️ nas receitas para adicionar aos favoritos!"
+          message="Toca no ❤️ nas receitas para adicionar!"
         />
       );
-    }
     return (
       <EmptyState title="Nenhuma receita" message="Tenta outra categoria." />
     );
@@ -91,20 +82,15 @@ export default function RecipesScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* ── Header ───────────────────────────────────────────────────── */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Cozinha Lusa 🇵🇹</Text>
         <GoalBadge goal={objetivo} />
       </View>
-
-      {/* ── Search Bar ───────────────────────────────────────────────── */}
       <SearchBar
         value={pesquisa}
         onChangeText={setPesquisa}
         onClear={handleClearSearch}
       />
-
-      {/* ── Category Tabs ────────────────────────────────────────────── */}
       {pesquisa.length === 0 && (
         <CategoryTabs
           activeCategory={categoriaAtiva}
@@ -112,8 +98,6 @@ export default function RecipesScreen({ navigation }) {
           favoritesCount={getFavoritesCount()}
         />
       )}
-
-      {/* ── Lista de Receitas ─────────────────────────────────────────── */}
       <FlatList
         data={receitasFiltradas}
         renderItem={renderRecipe}
@@ -125,8 +109,8 @@ export default function RecipesScreen({ navigation }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#32CD32"
-            colors={["#32CD32"]}
+            tintColor={COLORS.primary}
+            colors={[COLORS.primary]}
           />
         }
       />
@@ -137,20 +121,16 @@ export default function RecipesScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: COLORS.textInverse,
     paddingHorizontal: 20,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: COLORS.textInverse,
     justifyContent: "center",
     alignItems: "center",
   },
-  loadingText: {
-    color: "#FFF",
-    marginTop: 12,
-    fontSize: 14,
-  },
+  loadingText: { color: COLORS.textPrimary, marginTop: 12, fontSize: 14 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -158,12 +138,6 @@ const styles = StyleSheet.create({
     marginTop: 60,
     marginBottom: 20,
   },
-  headerTitle: {
-    color: "#FFF",
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  listContent: {
-    paddingBottom: 30,
-  },
+  headerTitle: { color: COLORS.textPrimary, fontSize: 24, fontWeight: "bold" },
+  listContent: { paddingBottom: 30 },
 });

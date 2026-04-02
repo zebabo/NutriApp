@@ -1,10 +1,12 @@
-/**
- * ⚖️ WEIGHT PROGRESS
- * Progresso de peso com input para registar novo peso
- */
-
-import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { COLORS } from "../../utils/theme";
 
 export const WeightProgress = ({
   pesoAtual,
@@ -15,35 +17,42 @@ export const WeightProgress = ({
   setNovoPeso,
   onRegister,
 }) => {
-  const diferenca = Math.abs(pesoAtual - pesoAlvo);
-  const faltam = pesoAtual > pesoAlvo ? 'perder' : 'ganhar';
+  const exibir = (val) => {
+    const n = parseFloat(val);
+    if (isNaN(n)) return "--";
+    const v = unidade === "Imperial" ? (n * 2.20462).toFixed(1) : n.toFixed(1);
+    return `${v}${unidade === "Imperial" ? "lb" : "kg"}`;
+  };
+  const diferenca = pesoAtual && pesoAlvo ? Math.abs(pesoAtual - pesoAlvo) : 0;
+  const faltam = pesoAtual > pesoAlvo ? "perder" : "ganhar";
 
   return (
     <View style={styles.container}>
-      {/* Current Weight Display */}
       <View style={styles.currentWeight}>
         <View style={styles.weightInfo}>
           <Text style={styles.weightLabel}>Peso Atual</Text>
-          <Text style={styles.weightValue}>{pesoAtual}</Text>
+          <Text style={styles.weightValue}>{exibir(pesoAtual)}</Text>
         </View>
-
         {metaAtingida ? (
           <View style={styles.goalBadge}>
-            <Ionicons name="checkmark-circle" size={32} color="#32CD32" />
+            <Ionicons
+              name="checkmark-circle"
+              size={32}
+              color={COLORS.primary}
+            />
             <Text style={styles.goalText}>Meta Atingida!</Text>
           </View>
         ) : (
           <View style={styles.progressInfo}>
             <Text style={styles.progressLabel}>Meta</Text>
-            <Text style={styles.progressValue}>{pesoAlvo}</Text>
+            <Text style={styles.progressValue}>{exibir(pesoAlvo)}</Text>
             <Text style={styles.progressDiff}>
-              ({diferenca.toFixed(1)}{unidade === 'Metric' ? 'kg' : 'lb'} a {faltam})
+              ({diferenca.toFixed(1)}
+              {unidade === "Imperial" ? "lb" : "kg"} a {faltam})
             </Text>
           </View>
         )}
       </View>
-
-      {/* Input Row */}
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>Registar novo peso:</Text>
         <View style={styles.inputRow}>
@@ -53,13 +62,10 @@ export const WeightProgress = ({
             value={novoPeso}
             onChangeText={setNovoPeso}
             placeholder={`Ex: ${pesoAtual}`}
-            placeholderTextColor="#666"
+            placeholderTextColor={COLORS.textMuted}
           />
-          <TouchableOpacity
-            style={styles.registerBtn}
-            onPress={onRegister}
-          >
-            <Ionicons name="checkmark" size={20} color="#000" />
+          <TouchableOpacity style={styles.registerBtn} onPress={onRegister}>
+            <Ionicons name="checkmark" size={20} color={COLORS.textInverse} />
             <Text style={styles.registerBtnText}>OK</Text>
           </TouchableOpacity>
         </View>
@@ -70,93 +76,57 @@ export const WeightProgress = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: COLORS.surface,
     padding: 20,
     borderRadius: 20,
     marginBottom: 20,
   },
   currentWeight: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
+    borderBottomColor: COLORS.surfaceBorder,
   },
-  weightInfo: {
-    flex: 1,
-  },
+  weightInfo: { flex: 1 },
   weightLabel: {
-    color: '#666',
+    color: COLORS.textSecondary,
     fontSize: 12,
     marginBottom: 4,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
-  weightValue: {
-    color: '#FFF',
-    fontSize: 36,
-    fontWeight: 'bold',
-  },
-  progressInfo: {
-    alignItems: 'flex-end',
-  },
-  progressLabel: {
-    color: '#666',
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  progressValue: {
-    color: '#32CD32',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  progressDiff: {
-    color: '#888',
-    fontSize: 11,
-    marginTop: 2,
-  },
-  goalBadge: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  goalText: {
-    color: '#32CD32',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  inputContainer: {
-    gap: 10,
-  },
-  inputLabel: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
+  weightValue: { color: COLORS.textPrimary, fontSize: 36, fontWeight: "bold" },
+  progressInfo: { alignItems: "flex-end" },
+  progressLabel: { color: COLORS.textSecondary, fontSize: 12, marginBottom: 4 },
+  progressValue: { color: COLORS.primary, fontSize: 24, fontWeight: "bold" },
+  progressDiff: { color: COLORS.textMuted, fontSize: 11, marginTop: 2 },
+  goalBadge: { alignItems: "center", gap: 4 },
+  goalText: { color: COLORS.primary, fontSize: 12, fontWeight: "bold" },
+  inputContainer: { gap: 10 },
+  inputLabel: { color: COLORS.textPrimary, fontSize: 13, fontWeight: "600" },
+  inputRow: { flexDirection: "row", gap: 10 },
   input: {
     flex: 1,
-    backgroundColor: '#121212',
-    color: '#FFF',
+    backgroundColor: COLORS.background,
+    color: COLORS.textPrimary,
     padding: 14,
     borderRadius: 10,
     fontSize: 16,
   },
   registerBtn: {
-    backgroundColor: '#32CD32',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 20,
     borderRadius: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 6,
   },
   registerBtnText: {
-    color: '#000',
-    fontWeight: 'bold',
+    color: COLORS.textInverse,
+    fontWeight: "bold",
     fontSize: 14,
   },
 });

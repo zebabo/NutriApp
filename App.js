@@ -23,6 +23,7 @@ import RecipeDetailScreen from "./src/screens/RecipeDetailScreen";
 import RecipesScreen from "./src/screens/RecipesScreen";
 import ResetPasswordScreen from "./src/screens/ResetPasswordScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
+import { COLORS } from "./src/utils/theme";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -34,7 +35,7 @@ const TabIcon = ({ name, focused, label }) => (
     <Ionicons
       name={focused ? name : `${name}-outline`}
       size={24}
-      color={focused ? "#32CD32" : "#555"}
+      color={focused ? COLORS.primary : COLORS.textMuted}
     />
     <Text style={[tabStyles.label, focused && tabStyles.labelActive]}>
       {label}
@@ -50,11 +51,11 @@ const tabStyles = StyleSheet.create({
   },
   label: {
     fontSize: 10,
-    color: "#555",
+    color: COLORS.textMuted,
     fontWeight: "600",
   },
   labelActive: {
-    color: "#32CD32",
+    color: COLORS.primary,
   },
 });
 
@@ -67,8 +68,8 @@ function MainTabs() {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: "#161616",
-          borderTopColor: "#222",
+          backgroundColor: COLORS.background,
+          borderTopColor: COLORS.surfaceBorder,
           borderTopWidth: 1,
           height: Platform.OS === "ios" ? 84 : 64,
           paddingBottom: Platform.OS === "ios" ? 24 : 8,
@@ -159,11 +160,11 @@ function Navigation() {
       <View
         style={{
           flex: 1,
-          backgroundColor: "#121212",
+          backgroundColor: COLORS.background,
           justifyContent: "center",
         }}
       >
-        <ActivityIndicator size="large" color="#32CD32" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }

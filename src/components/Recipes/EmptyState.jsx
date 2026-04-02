@@ -1,49 +1,40 @@
-/**
- * 📭 EMPTY STATE
- * Estado vazio para listas
- */
+import { Ionicons } from "@expo/vector-icons";
+import { StyleSheet, Text, View } from "react-native";
+import { COLORS } from "../../utils/theme";
 
-import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
-
-export const EmptyState = ({ 
-  icon = 'restaurant-outline', 
-  title = 'Nenhuma receita encontrada',
-  message = 'Tenta outra categoria ou pesquisa.' 
-}) => {
-  return (
-    <View style={styles.container}>
-      <View style={styles.iconContainer}>
-        <Ionicons name={icon} size={64} color="#333" />
-      </View>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.message}>{message}</Text>
-    </View>
-  );
-};
+export const EmptyState = ({ icon, title, message }) => (
+  <View style={styles.container}>
+    {icon && (
+      <Ionicons
+        name={icon}
+        size={48}
+        color={COLORS.textMuted}
+        style={styles.icon}
+      />
+    )}
+    <Text style={styles.title}>{title}</Text>
+    {message && <Text style={styles.message}>{message}</Text>}
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
     paddingVertical: 60,
-    paddingHorizontal: 40,
+    paddingHorizontal: 30,
   },
-  iconContainer: {
-    marginBottom: 20,
-    opacity: 0.5,
-  },
+  icon: { marginBottom: 16 },
   title: {
-    color: '#FFF',
+    color: COLORS.textPrimary,
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 8,
-    textAlign: 'center',
   },
   message: {
-    color: '#666',
+    color: COLORS.textSecondary,
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
   },
 });

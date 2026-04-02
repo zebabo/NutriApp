@@ -1,13 +1,8 @@
-/**
- * 📊 BMI CARD
- * Exibe IMC e peso saudável calculados
- */
-
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from "react-native";
+import { COLORS } from "../../utils/theme";
 
 export const BMICard = ({ bmi, bmiCategory, healthyRange, unitSystem }) => {
   if (!bmi || !bmiCategory) return null;
-
   return (
     <View style={styles.card}>
       <View style={styles.row}>
@@ -16,15 +11,13 @@ export const BMICard = ({ bmi, bmiCategory, healthyRange, unitSystem }) => {
           {bmi} - {bmiCategory.text}
         </Text>
       </View>
-
       {healthyRange && (
         <View style={styles.row}>
           <Text style={styles.label}>Peso Saudável:</Text>
           <Text style={styles.value}>
-            {unitSystem === 'Metric'
+            {unitSystem === "Metric"
               ? `${healthyRange.min} - ${healthyRange.max} kg`
-              : `${(healthyRange.min * 2.20462).toFixed(1)} - ${(healthyRange.max * 2.20462).toFixed(1)} lb`
-            }
+              : `${(healthyRange.min * 2.20462).toFixed(1)} - ${(healthyRange.max * 2.20462).toFixed(1)} lb`}
           </Text>
         </View>
       )}
@@ -34,28 +27,20 @@ export const BMICard = ({ bmi, bmiCategory, healthyRange, unitSystem }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1E1E1E',
+    backgroundColor: COLORS.surface,
     padding: 15,
     borderRadius: 12,
     marginTop: 10,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: COLORS.surfaceBorder,
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
-  label: {
-    color: '#888',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  value: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
+  label: { color: COLORS.textSecondary, fontSize: 13, fontWeight: "600" },
+  value: { color: COLORS.textPrimary, fontSize: 14, fontWeight: "bold" },
 });

@@ -1,56 +1,46 @@
-/**
- * 🔍 SEARCH BAR
- * Barra de pesquisa com clear button
- */
+import { Ionicons } from "@expo/vector-icons";
+import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import { COLORS } from "../../utils/theme";
 
-import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-
-export const SearchBar = ({ value, onChangeText, onClear, placeholder = 'Pesquisar receitas...' }) => {
-  return (
-    <View style={styles.container}>
-      <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-      
-      <TextInput
-        style={styles.input}
-        placeholder={placeholder}
-        placeholderTextColor="#666"
-        value={value}
-        onChangeText={onChangeText}
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-
-      {value.length > 0 && (
-        <TouchableOpacity onPress={onClear} style={styles.clearButton}>
-          <Ionicons name="close-circle" size={20} color="#666" />
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-};
+export const SearchBar = ({ value, onChangeText, onClear }) => (
+  <View style={styles.container}>
+    <Ionicons
+      name="search-outline"
+      size={18}
+      color={COLORS.textMuted}
+      style={styles.icon}
+    />
+    <TextInput
+      style={styles.input}
+      value={value}
+      onChangeText={onChangeText}
+      placeholder="Pesquisar receitas..."
+      placeholderTextColor={COLORS.textMuted}
+    />
+    {value.length > 0 && (
+      <TouchableOpacity onPress={onClear}>
+        <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+      </TouchableOpacity>
+    )}
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E1E1E',
-    borderRadius: 15,
-    paddingHorizontal: 15,
-    height: 50,
-    marginBottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: COLORS.surfaceBorder,
   },
-  searchIcon: {
-    marginRight: 10,
-  },
+  icon: { marginRight: 8 },
   input: {
     flex: 1,
-    color: '#FFF',
-    fontSize: 16,
-  },
-  clearButton: {
-    padding: 4,
+    color: COLORS.textPrimary,
+    paddingVertical: 12,
+    fontSize: 14,
   },
 });

@@ -4,6 +4,7 @@
  */
 
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { COLORS } from "../utils/theme";
 
 /**
  * @param {'Dashboard' | 'Recipes'} activeTab - qual está ativo
@@ -58,10 +59,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tabActive: {
-    backgroundColor: "#32CD32",
+    backgroundColor: COLORS.primary,
   },
   tabInactive: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: COLORS.surface,
   },
   textActive: {
     color: "#000",
@@ -69,7 +70,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   textInactive: {
-    color: "#666",
+    color: COLORS.textSecondary,
     fontSize: 14,
   },
 });

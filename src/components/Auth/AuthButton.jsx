@@ -1,20 +1,20 @@
-/**
- * 🔘 AUTH BUTTON
- * Botão customizado para auth
- */
-
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+} from "react-native";
+import { COLORS } from "../../utils/theme";
 
 export const AuthButton = ({
   title,
   onPress,
   loading = false,
   disabled = false,
-  variant = 'primary', // primary, secondary
+  variant = "primary",
   style,
 }) => {
-  const isPrimary = variant === 'primary';
-
+  const isPrimary = variant === "primary";
   return (
     <TouchableOpacity
       style={[
@@ -28,7 +28,9 @@ export const AuthButton = ({
       activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator color={isPrimary ? '#000' : '#32CD32'} />
+        <ActivityIndicator
+          color={isPrimary ? COLORS.textInverse : COLORS.primary}
+        />
       ) : (
         <Text
           style={[
@@ -47,35 +49,18 @@ const styles = StyleSheet.create({
   button: {
     height: 60,
     borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 10,
   },
-  primaryButton: {
-    backgroundColor: '#32CD32',
-    shadowColor: '#32CD32',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
-  },
+  primaryButton: { backgroundColor: COLORS.primary },
   secondaryButton: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: '#32CD32',
+    borderColor: COLORS.primary,
   },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  primaryText: {
-    color: '#000',
-  },
-  secondaryText: {
-    color: '#32CD32',
-  },
+  buttonDisabled: { opacity: 0.5 },
+  buttonText: { fontSize: 16, fontWeight: "bold", letterSpacing: 1 },
+  primaryText: { color: COLORS.textInverse },
+  secondaryText: { color: COLORS.primary },
 });

@@ -1,30 +1,29 @@
-/**
- * 🎯 GOAL BADGE
- * Badge que mostra o objetivo do usuário
- */
-
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from "react-native";
+import { COLORS } from "../../utils/theme";
 
 export const GoalBadge = ({ goal }) => {
   const getGoalColor = () => {
     switch (goal) {
-      case 'Perder':
-        return { bg: '#E74C3C22', text: '#E74C3C' };
-      case 'Ganhar':
-        return { bg: '#32CD3222', text: '#32CD32' };
-      case 'Manter':
-        return { bg: '#3498DB22', text: '#3498DB' };
+      case "Perder":
+        return { bg: "rgba(248, 81, 73, 0.13)", text: COLORS.danger };
+      case "Ganhar":
+        return { bg: COLORS.primaryMuted, text: COLORS.primary };
+      case "Manter":
+        return { bg: "rgba(88, 166, 255, 0.13)", text: COLORS.info };
       default:
-        return { bg: '#666622', text: '#666' };
+        return { bg: "rgba(139, 148, 158, 0.13)", text: COLORS.textSecondary };
     }
   };
-
   const colors = getGoalColor();
-
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg, borderColor: colors.text }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.bg, borderColor: colors.text },
+      ]}
+    >
       <Text style={[styles.text, { color: colors.text }]}>
-        FOCO: {goal.toUpperCase()}
+        FOCO: {goal?.toUpperCase()}
       </Text>
     </View>
   );
@@ -37,8 +36,5 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
   },
-  text: {
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
+  text: { fontSize: 10, fontWeight: "bold" },
 });

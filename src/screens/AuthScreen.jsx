@@ -1,13 +1,5 @@
-/**
- * 🔐 AUTH SCREEN - REFATORADO
- * 
- * APENAS JSX PURO!
- * - Lógica → useAuthForm hook
- * - UI → Componentes modulares
- */
-
-import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useRef } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -18,16 +10,16 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
-} from 'react-native';
-import { AuthButton } from '../components/Auth/AuthButton';
-import { AuthHeader } from '../components/Auth/AuthHeader';
-import { AuthInput } from '../components/Auth/AuthInput';
-import { PasswordStrength } from '../components/Auth/PasswordStrength';
-import { useAuthForm } from '../hooks/useAuthForm';
+} from "react-native";
+import { AuthButton } from "../components/Auth/AuthButton";
+import { AuthHeader } from "../components/Auth/AuthHeader";
+import { AuthInput } from "../components/Auth/AuthInput";
+import { PasswordStrength } from "../components/Auth/PasswordStrength";
+import { useAuthForm } from "../hooks/useAuthForm";
+import { COLORS } from "../utils/theme";
 
 export default function AuthScreen({ navigation }) {
   const {
-    // Estados
     mode,
     email,
     setEmail,
@@ -40,43 +32,31 @@ export default function AuthScreen({ navigation }) {
     showPassword,
     showConfirmPassword,
     passwordStrength,
-
-    // Loading
     isLoggingIn,
     isSigningUp,
     isSendingReset,
     isLoading,
-
-    // Rate limiting
     isLockedOut,
     lockoutTime,
-
-    // Funções
     handleAuth,
     handleForgotPassword,
     toggleMode,
     toggleShowPassword,
     toggleShowConfirmPassword,
-
-    // Utilitários
     isLogin,
     canSubmit,
   } = useAuthForm(navigation);
 
-  // Refs para auto-focus
   const emailRef = useRef();
   const passwordRef = useRef();
   const confirmPasswordRef = useRef();
   const nomeRef = useRef();
 
-  // Carregar dados iniciais
-  useEffect(() => {
-    // Lógica de inicialização se necessário
-  }, []);
+  useEffect(() => {}, []);
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -85,19 +65,15 @@ export default function AuthScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
           <AuthHeader
-            title={isLogin ? 'Bem-vindo de volta' : 'Criar conta'}
+            title={isLogin ? "Bem-vindo de volta" : "Criar conta"}
             subtitle={
               isLogin
-                ? 'Continua a tua jornada fitness.'
-                : 'Começa hoje a transformar o teu corpo.'
+                ? "Continua a tua jornada fitness."
+                : "Começa hoje a transformar o teu corpo."
             }
           />
-
-          {/* Form */}
           <View style={styles.form}>
-            {/* Nome (apenas signup) */}
             {!isLogin && (
               <AuthInput
                 ref={nomeRef}
@@ -111,8 +87,6 @@ export default function AuthScreen({ navigation }) {
                 onSubmitEditing={() => emailRef.current?.focus()}
               />
             )}
-
-            {/* Email */}
             <AuthInput
               ref={emailRef}
               icon="mail-outline"
@@ -126,8 +100,6 @@ export default function AuthScreen({ navigation }) {
               returnKeyType="next"
               onSubmitEditing={() => passwordRef.current?.focus()}
             />
-
-            {/* Password */}
             <AuthInput
               ref={passwordRef}
               icon="lock-closed-outline"
@@ -135,28 +107,27 @@ export default function AuthScreen({ navigation }) {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
-              textContentType={isLogin ? 'password' : 'newPassword'}
-              returnKeyType={isLogin ? 'done' : 'next'}
+              textContentType={isLogin ? "password" : "newPassword"}
+              returnKeyType={isLogin ? "done" : "next"}
               onSubmitEditing={
                 isLogin ? handleAuth : () => confirmPasswordRef.current?.focus()
               }
               rightIcon={
                 <TouchableOpacity onPress={toggleShowPassword}>
                   <Ionicons
-                    name={showPassword ? 'eye-off' : 'eye'}
+                    name={showPassword ? "eye-off" : "eye"}
                     size={20}
-                    color="#666"
+                    color={COLORS.textSecondary}
                   />
                 </TouchableOpacity>
               }
             />
-
-            {/* Password Strength (apenas signup) */}
             {!isLogin && password.length > 0 && (
-              <PasswordStrength password={password} strength={passwordStrength} />
+              <PasswordStrength
+                password={password}
+                strength={passwordStrength}
+              />
             )}
-
-            {/* Forgot Password (apenas login) */}
             {isLogin && (
               <TouchableOpacity
                 onPress={handleForgotPassword}
@@ -166,8 +137,6 @@ export default function AuthScreen({ navigation }) {
                 <Text style={styles.forgotText}>Esqueci-me da password</Text>
               </TouchableOpacity>
             )}
-
-            {/* Confirm Password (apenas signup) */}
             {!isLogin && (
               <AuthInput
                 ref={confirmPasswordRef}
@@ -182,16 +151,14 @@ export default function AuthScreen({ navigation }) {
                 rightIcon={
                   <TouchableOpacity onPress={toggleShowConfirmPassword}>
                     <Ionicons
-                      name={showConfirmPassword ? 'eye-off' : 'eye'}
+                      name={showConfirmPassword ? "eye-off" : "eye"}
                       size={20}
-                      color="#666"
+                      color={COLORS.textSecondary}
                     />
                   </TouchableOpacity>
                 }
               />
             )}
-
-            {/* Lockout Warning */}
             {isLockedOut && (
               <View style={styles.warningContainer}>
                 <Ionicons name="warning" size={16} color="#FF6B6B" />
@@ -200,25 +167,21 @@ export default function AuthScreen({ navigation }) {
                 </Text>
               </View>
             )}
-
-            {/* Main Button */}
             <AuthButton
-              title={isLogin ? 'ENTRAR' : 'REGISTAR'}
+              title={isLogin ? "ENTRAR" : "REGISTAR"}
               onPress={handleAuth}
               loading={isLoggingIn || isSigningUp}
               disabled={!canSubmit() || isLockedOut}
             />
-
-            {/* Toggle Mode */}
             <TouchableOpacity
               style={styles.switchBtn}
               onPress={toggleMode}
               disabled={isLoading}
             >
               <Text style={styles.switchText}>
-                {isLogin ? 'Não tens conta? ' : 'Já tens conta? '}
+                {isLogin ? "Não tens conta? " : "Já tens conta? "}
                 <Text style={styles.switchTextHighlight}>
-                  {isLogin ? 'Regista-te' : 'Faz Login'}
+                  {isLogin ? "Regista-te" : "Faz Login"}
                 </Text>
               </Text>
             </TouchableOpacity>
@@ -230,52 +193,22 @@ export default function AuthScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#121212',
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 25,
-  },
-  form: {
-    width: '100%',
-  },
-  forgotBtn: {
-    alignSelf: 'flex-end',
-    marginBottom: 20,
-    marginRight: 5,
-  },
-  forgotText: {
-    color: '#32CD32',
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  container: { flex: 1, backgroundColor: COLORS.textInverse },
+  scrollContainer: { flexGrow: 1, justifyContent: "center", padding: 25 },
+  form: { width: "100%" },
+  forgotBtn: { alignSelf: "flex-end", marginBottom: 20, marginRight: 5 },
+  forgotText: { color: COLORS.primary, fontSize: 13, fontWeight: "600" },
   warningContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 107, 107, 0.1)",
     padding: 12,
     borderRadius: 10,
     marginBottom: 16,
     gap: 8,
   },
-  warningText: {
-    color: '#FF6B6B',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  switchBtn: {
-    marginTop: 25,
-    alignItems: 'center',
-  },
-  switchText: {
-    color: '#666',
-    fontSize: 14,
-  },
-  switchTextHighlight: {
-    color: '#32CD32',
-    fontWeight: 'bold',
-  },
+  warningText: { color: "#FF6B6B", fontSize: 13, fontWeight: "600" },
+  switchBtn: { marginTop: 25, alignItems: "center" },
+  switchText: { color: COLORS.textSecondary, fontSize: 14 },
+  switchTextHighlight: { color: COLORS.primary, fontWeight: "bold" },
 });

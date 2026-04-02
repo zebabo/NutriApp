@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { COLORS } from "../../utils/theme";
 
 export const MealInput = ({
   alimentoNome,
@@ -34,7 +35,7 @@ export const MealInput = ({
         <TextInput
           style={[styles.input, { flex: 2 }]}
           placeholder="Nome do alimento..."
-          placeholderTextColor="#666"
+          placeholderTextColor={COLORS.textSecondary}
           value={alimentoNome}
           onChangeText={setAlimentoNome}
         />
@@ -43,7 +44,7 @@ export const MealInput = ({
           style={[styles.input, { flex: 1, marginLeft: 10 }]}
           placeholder="Kcal"
           keyboardType="numeric"
-          placeholderTextColor="#666"
+          placeholderTextColor={COLORS.textSecondary}
           value={alimentoKcal}
           onChangeText={setAlimentoKcal}
         />
@@ -66,7 +67,7 @@ export const MealInput = ({
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.addFavoriteBtn} onPress={onAddFavorite}>
-          <Ionicons name="bookmark-outline" size={16} color="#32CD32" />
+          <Ionicons name="bookmark-outline" size={16} color={COLORS.primary} />
           <Text style={styles.addFavoriteBtnText}>Adicionar aos Favoritos</Text>
         </TouchableOpacity>
       </View>
@@ -87,7 +88,7 @@ export const MealInput = ({
                 onPress={() => setShowFavorites(false)}
                 style={styles.closeBtn}
               >
-                <Ionicons name="close" size={24} color="#FFF" />
+                <Ionicons name="close" size={24} color={COLORS.textPrimary} />
               </TouchableOpacity>
             </View>
 
@@ -139,7 +140,7 @@ export const MealInput = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: COLORS.surface,
     padding: 16,
     borderRadius: 16,
     marginBottom: 16,
@@ -149,14 +150,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   input: {
-    backgroundColor: "#121212",
-    color: "#FFF",
+    backgroundColor: COLORS.textInverse,
+    color: COLORS.textPrimary,
     padding: 14,
     borderRadius: 10,
     fontSize: 14,
   },
   addBtn: {
-    backgroundColor: "#32CD32",
+    backgroundColor: COLORS.primary,
     width: 50,
     height: 50,
     borderRadius: 10,
@@ -188,25 +189,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(50, 205, 50, 0.1)",
+    backgroundColor: COLORS.primaryMuted,
     padding: 10,
     borderRadius: 8,
     gap: 6,
   },
   addFavoriteBtnText: {
-    color: "#32CD32",
+    color: COLORS.primary,
     fontSize: 12,
     fontWeight: "600",
   },
-
-  // Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.8)",
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: COLORS.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: "70%",
@@ -218,10 +217,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#2A2A2A",
+    borderBottomColor: COLORS.surfaceHigh,
   },
   modalTitle: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
     fontSize: 20,
     fontWeight: "bold",
   },
@@ -236,18 +235,18 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   emptyText: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
     fontSize: 16,
     marginBottom: 8,
   },
   emptySubtext: {
-    color: "#666",
+    color: COLORS.textSecondary,
     fontSize: 13,
     textAlign: "center",
   },
   favoriteItem: {
     flexDirection: "row",
-    backgroundColor: "#2A2A2A",
+    backgroundColor: COLORS.surfaceHigh,
     padding: 14,
     borderRadius: 12,
     marginBottom: 10,
@@ -257,13 +256,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   favoriteName: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 4,
   },
   favoriteKcal: {
-    color: "#32CD32",
+    color: COLORS.primary,
     fontSize: 13,
     fontWeight: "bold",
   },

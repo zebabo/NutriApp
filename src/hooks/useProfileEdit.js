@@ -210,7 +210,7 @@ export const useProfileEdit = () => {
         style: "destructive",
         onPress: async () => {
           await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          await signOut();
+          await supabase.auth.signOut();
         },
       },
     ]);

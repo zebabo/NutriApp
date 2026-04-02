@@ -1,73 +1,33 @@
-/**
- * ⚖️ PORTION SELECTOR
- * Seletor de porções com + e -
- */
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  PORTION_MAX,
+  PORTION_MIN,
+  PORTION_STEP,
+} from "../../utils/recipeConstants";
+import { formatPortion } from "../../utils/recipeHelpers";
+import { COLORS } from "../../utils/theme";
 
-import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { PORTION_MAX, PORTION_MIN, PORTION_STEP } from '../../utils/recipeConstants';
-import { formatPortion } from '../../utils/recipeHelpers';
-
-export const PortionSelector = ({ portion, onIncrease, onDecrease, onPortionChange }) => {
+export const PortionSelector = ({ portion, onPortionChange }) => {
   const canDecrease = portion > PORTION_MIN;
   const canIncrease = portion < PORTION_MAX;
-
-  const handleDecrease = () => {
-    if (canDecrease) {
-      const newPortion = Math.max(PORTION_MIN, portion - PORTION_STEP);
-      onPortionChange(newPortion);
-      if (onDecrease) onDecrease();
-    }
-  };
-
-  const handleIncrease = () => {
-    if (canIncrease) {
-      const newPortion = Math.min(PORTION_MAX, portion + PORTION_STEP);
-      onPortionChange(newPortion);
-      if (onIncrease) onIncrease();
-    }
-  };
-
   return (
     <View style={styles.container}>
-      <View style={styles.labelRow}>
-        <Text style={styles.label}>Porções</Text>
-        <Text style={styles.hint}>
-          Ajusta a quantidade para calcular as calorias
-        </Text>
-      </View>
-
-      <View style={styles.selectorRow}>
-        {/* Botão diminuir */}
+      <Text style={styles.label}>Porção</Text>
+      <View style={styles.controls}>
         <TouchableOpacity
-          style={[styles.button, !canDecrease && styles.buttonDisabled]}
-          onPress={handleDecrease}
+          style={[styles.btn, !canDecrease && styles.btnDisabled]}
+          onPress={() => canDecrease && onPortionChange(portion - PORTION_STEP)}
           disabled={!canDecrease}
         >
-          <Ionicons 
-            name="remove" 
-            size={24} 
-            color={canDecrease ? '#FFF' : '#666'} 
-          />
+          <Text style={styles.btnText}>−</Text>
         </TouchableOpacity>
-
-        {/* Display */}
-        <View style={styles.display}>
-          <Text style={styles.portionValue}>{portion}</Text>
-          <Text style={styles.portionText}>{formatPortion(portion)}</Text>
-        </View>
-
-        {/* Botão aumentar */}
+        <Text style={styles.value}>{formatPortion(portion)}</Text>
         <TouchableOpacity
-          style={[styles.button, !canIncrease && styles.buttonDisabled]}
-          onPress={handleIncrease}
+          style={[styles.btn, !canIncrease && styles.btnDisabled]}
+          onPress={() => canIncrease && onPortionChange(portion + PORTION_STEP)}
           disabled={!canIncrease}
         >
-          <Ionicons 
-            name="add" 
-            size={24} 
-            color={canIncrease ? '#FFF' : '#666'} 
-          />
+          <Text style={styles.btnText}>+</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -76,55 +36,38 @@ export const PortionSelector = ({ portion, onIncrease, onDecrease, onPortionChan
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1E1E1E',
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 24,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+    backgroundColor: COLORS.surface,
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: COLORS.surfaceBorder,
   },
-  labelRow: {
-    marginBottom: 16,
+  label: { color: COLORS.textPrimary, fontSize: 15, fontWeight: "600" },
+  controls: { flexDirection: "row", alignItems: "center", gap: 16 },
+  btn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  label: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
+  btnDisabled: { opacity: 0.4 },
+  btnText: {
+    color: COLORS.textInverse,
+    fontSize: 20,
+    fontWeight: "bold",
+    lineHeight: 24,
   },
-  hint: {
-    color: '#666',
-    fontSize: 12,
-  },
-  selectorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  button: {
-    backgroundColor: '#2A2A2A',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.3,
-  },
-  display: {
-    flex: 1,
-    alignItems: 'center',
-    marginHorizontal: 20,
-  },
-  portionValue: {
-    color: '#32CD32',
-    fontSize: 36,
-    fontWeight: 'bold',
-  },
-  portionText: {
-    color: '#666',
-    fontSize: 14,
-    marginTop: 4,
+  value: {
+    color: COLORS.textPrimary,
+    fontSize: 15,
+    fontWeight: "600",
+    minWidth: 80,
+    textAlign: "center",
   },
 });

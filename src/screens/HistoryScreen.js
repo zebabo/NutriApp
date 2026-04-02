@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { supabase } from "../services/supabase";
+import { COLORS } from "../utils/theme";
 
 export default function HistoryScreen({ navigation }) {
   const [listaHistorico, setListaHistorico] = useState([]);
@@ -93,7 +94,7 @@ export default function HistoryScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#32CD32" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
@@ -108,7 +109,7 @@ export default function HistoryScreen({ navigation }) {
           onPress={() => navigation.goBack()}
           style={styles.backCircle}
         >
-          <Ionicons name="arrow-back" size={24} color="#32CD32" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
         <Text style={styles.title}>Histórico de Peso</Text>
       </View>
@@ -123,10 +124,10 @@ export default function HistoryScreen({ navigation }) {
               {
                 color:
                   variacaoNum === 0
-                    ? "#888"
+                    ? COLORS.textSecondary
                     : variacaoNum > 0
                       ? "#FF4500"
-                      : "#32CD32",
+                      : COLORS.primary,
               },
             ]}
           >
@@ -174,7 +175,7 @@ export default function HistoryScreen({ navigation }) {
                     <Text
                       style={[
                         styles.rowDiff,
-                        { color: diffNum > 0 ? "#FF4500" : "#32CD32" },
+                        { color: diffNum > 0 ? "#FF4500" : COLORS.primary },
                       ]}
                     >
                       {diffNum > 0 ? "▲" : "▼"} {Math.abs(diffNum)} kg
@@ -189,7 +190,11 @@ export default function HistoryScreen({ navigation }) {
                   style={styles.deleteBtn}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Ionicons name="trash-outline" size={16} color="#555" />
+                  <Ionicons
+                    name="trash-outline"
+                    size={16}
+                    color={COLORS.textMuted}
+                  />
                 </TouchableOpacity>
               </View>
             );
@@ -204,11 +209,11 @@ export default function HistoryScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: COLORS.textInverse,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: COLORS.textInverse,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -224,26 +229,26 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: COLORS.surface,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.surfaceBorder,
   },
   title: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#FFF",
+    color: COLORS.textPrimary,
   },
   summaryCard: {
     flexDirection: "row",
-    backgroundColor: "#1E1E1E",
+    backgroundColor: COLORS.surface,
     marginHorizontal: 20,
     borderRadius: 16,
     padding: 18,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: COLORS.surfaceHigh,
   },
   summaryItem: {
     flex: 1,
@@ -251,18 +256,18 @@ const styles = StyleSheet.create({
   },
   summaryDivider: {
     width: 1,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: COLORS.surfaceHigh,
     marginVertical: 4,
   },
   summaryLabel: {
-    color: "#666",
+    color: COLORS.textSecondary,
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   summaryValue: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -272,19 +277,19 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1E1E1E",
+    backgroundColor: COLORS.surface,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: COLORS.surfaceHigh,
   },
   rowLeft: {
     flex: 1,
   },
   rowDate: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
     fontSize: 15,
     fontWeight: "500",
   },
@@ -293,7 +298,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   rowPeso: {
-    color: "#32CD32",
+    color: COLORS.primary,
     fontSize: 18,
     fontWeight: "bold",
     marginRight: 16,
@@ -313,13 +318,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   emptyText: {
-    color: "#FFF",
+    color: COLORS.textPrimary,
     fontSize: 16,
     fontWeight: "600",
     textAlign: "center",
   },
   emptySubText: {
-    color: "#555",
+    color: COLORS.textMuted,
     fontSize: 13,
     textAlign: "center",
     lineHeight: 20,

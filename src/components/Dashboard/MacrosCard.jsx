@@ -1,17 +1,12 @@
-/**
- * 📊 MACROS CARD
- * Card de macronutrientes (Proteína, Hidratos, Gordura)
- */
-
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from "react-native";
+import { COLORS } from "../../utils/theme";
 
 export const MacrosCard = ({ proteina, hidratos, gordura }) => {
   const macros = [
-    { label: 'Proteína', value: proteina, color: '#FF6B6B', icon: '🥩' },
-    { label: 'Hidratos', value: hidratos, color: '#4ECDC4', icon: '🍞' },
-    { label: 'Gordura', value: gordura, color: '#FFE66D', icon: '🥑' },
+    { label: "Proteína", value: proteina, color: "#FF6B6B", icon: "🥩" },
+    { label: "Hidratos", value: hidratos, color: "#4ECDC4", icon: "🍞" },
+    { label: "Gordura", value: gordura, color: "#FFE66D", icon: "🥑" },
   ];
-
   return (
     <View style={styles.container}>
       {macros.map((macro, index) => (
@@ -29,33 +24,26 @@ export const MacrosCard = ({ proteina, hidratos, gordura }) => {
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: 10,
     marginBottom: 20,
   },
   macroBox: {
     flex: 1,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: COLORS.surface,
     padding: 16,
     borderRadius: 16,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: COLORS.surfaceBorder,
   },
-  icon: {
-    fontSize: 24,
-    marginBottom: 8,
-  },
-  value: {
-    fontWeight: 'bold',
-    fontSize: 18,
-    marginBottom: 4,
-  },
+  icon: { fontSize: 24, marginBottom: 8 },
+  value: { fontWeight: "bold", fontSize: 18, marginBottom: 4 },
   label: {
-    color: '#666',
+    color: COLORS.textSecondary,
     fontSize: 10,
-    textTransform: 'uppercase',
-    fontWeight: '600',
+    textTransform: "uppercase",
+    fontWeight: "600",
   },
 });
