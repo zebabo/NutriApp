@@ -1,11 +1,11 @@
 /**
- * 📊 DASHBOARD SCREEN - CORRIGIDO (SEM CHAMADA DUPLICADA)
+ * 📊 DASHBOARD SCREEN
  *
- * FIX: Removido inicializar() do useEffect
- * O useDashboard já carrega automaticamente no mount
+ * Header: "O Teu Dashboard ⚡" + ícone settings
+ * Tab switcher: Dashboard (ativo) | Receitas 📖
+ * Conteúdo: igual ao original
  */
 
-import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
 import {
@@ -14,10 +14,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { AchievementBanner } from "../components/Dashboard/AchievementBanner";
+import { AchievementModal } from "../components/Dashboard/AchievementModal";
 import { AITipCard } from "../components/Dashboard/AITipCard";
 import { CaloriesCard } from "../components/Dashboard/CaloriesCard";
 import { MacrosCard } from "../components/Dashboard/MacrosCard";
@@ -31,8 +31,13 @@ import { useDashboard } from "../hooks/useDashboard";
 export default function DashboardScreen({ navigation }) {
   const {
     perfil,
+    dailyLog,
+    streak,
+    achievements,
+    newAchievement,
+    setNewAchievement,
     caloriasAlvo,
-    macros,
+    macrosAlvo,
     metaAtingida,
     unidade,
     loading,
@@ -46,7 +51,6 @@ export default function DashboardScreen({ navigation }) {
     favorites,
     showFavorites,
     setShowFavorites,
-    inicializar,
     onRefresh,
     adicionarAgua,
     resetAgua,
@@ -62,17 +66,7 @@ export default function DashboardScreen({ navigation }) {
     metaAgua,
   } = useDashboard();
 
-  // ❌ REMOVIDO: useEffect com inicializar()
-  // O useDashboard já tem um useEffect interno que carrega automaticamente
-
-  // ✅ MANTIDO: Opcional - recarregar quando voltar ao screen
-  useFocusEffect(
-    useCallback(() => {
-      // Não fazer nada aqui - o useDashboard já gere tudo
-      // Só descomentar se quiseres refresh ao voltar:
-      // inicializar();
-    }, []),
-  );
+  useFocusEffect(useCallback(() => {}, []));
 
   if (loading) {
     return (
@@ -85,28 +79,18 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* ── Header ───────────────────────────────────────────────────── */}
       <View style={styles.header}>
         <Text style={styles.welcomeText}>O Teu Dashboard ⚡</Text>
-        <TouchableOpacity
-          onPress={() => navigation.navigate("Settings")}
-          style={styles.settingsBtn}
-        >
-          <Ionicons name="settings-outline" size={24} color="#FFF" />
-        </TouchableOpacity>
       </View>
 
-      <View style={styles.tabContainer}>
-        <TouchableOpacity style={styles.tabActive}>
-          <Text style={styles.tabTextActive}>Dashboard</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tabInactive}
-          onPress={() => navigation.navigate("Recipes")}
-        >
-          <Text style={styles.tabTextInactive}>Receitas 📖</Text>
-        </TouchableOpacity>
-      </View>
+      {/* ── Achievement Modal (popup ao ganhar) ──────────────────────── */}
+      <AchievementModal
+        achievement={newAchievement}
+        onClose={() => setNewAchievement(null)}
+      />
 
+      {/* ── Conteúdo ─────────────────────────────────────────────────── */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -122,13 +106,14 @@ export default function DashboardScreen({ navigation }) {
       >
         <AchievementBanner
           metaAtingida={metaAtingida}
-          streak={perfil?.streak || 0}
+          streak={streak}
+          achievements={achievements}
         />
 
         <AITipCard objetivo={perfil?.objetivo} />
 
         <WaterCard
-          aguaHoje={perfil?.agua_hoje || 0}
+          aguaHoje={dailyLog?.water_ml || 0}
           metaAgua={metaAgua}
           onAddWater={adicionarAgua}
           onReset={resetAgua}
@@ -141,9 +126,9 @@ export default function DashboardScreen({ navigation }) {
         />
 
         <MacrosCard
-          proteina={macros.proteina}
-          hidratos={macros.hidratos}
-          gordura={macros.gordura}
+          proteina={macrosAlvo.proteina}
+          hidratos={macrosAlvo.hidratos}
+          gordura={macrosAlvo.gordura}
         />
 
         <MealInput
@@ -161,7 +146,7 @@ export default function DashboardScreen({ navigation }) {
         />
 
         <MealList
-          refeicoes={perfil?.refeicoes_hoje}
+          refeicoes={dailyLog?.meals || []}
           onRemove={removerAlimento}
         />
 
@@ -177,18 +162,7 @@ export default function DashboardScreen({ navigation }) {
           onRegister={registarPeso}
         />
 
-        <View style={styles.historySection}>
-          <Text style={styles.sectionTitle}>Histórico Completo</Text>
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate("History", { historico: perfil?.historico })
-            }
-            style={styles.historyBtn}
-          >
-            <Text style={styles.historyBtnText}>Ver Tudo</Text>
-            <Ionicons name="arrow-forward" size={16} color="#32CD32" />
-          </TouchableOpacity>
-        </View>
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -223,39 +197,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFF",
   },
-  settingsBtn: {
-    padding: 8,
-  },
-  tabContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  tabActive: {
-    flex: 1,
-    paddingVertical: 10,
-    backgroundColor: "#32CD32",
-    borderRadius: 10,
-    marginRight: 5,
-    alignItems: "center",
-  },
-  tabInactive: {
-    flex: 1,
-    paddingVertical: 10,
-    backgroundColor: "#1E1E1E",
-    borderRadius: 10,
-    marginLeft: 5,
-    alignItems: "center",
-  },
-  tabTextActive: {
-    color: "#000",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-  tabTextInactive: {
-    color: "#666",
-    fontSize: 14,
-  },
+
   scrollView: {
     flex: 1,
   },

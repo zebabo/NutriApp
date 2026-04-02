@@ -1,17 +1,18 @@
 /**
- * 🎣 USE RECIPES HOOK - CORRIGIDO
- * Toda a lógica de receitas centralizada
+ * 🎣 USE RECIPES HOOK - MIGRADO PARA daily_logs
  *
- * FIX: Melhorada lógica de filtros para funcionar corretamente
+ * Mudança principal:
+ * - adicionarRefeicao → usa dailyLogService.addMeal (daily_logs)
+ * - createMealFromRecipe → agora inclui proteina, hidratos, gordura
  */
 
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { receitasPortuguesas } from "../../data/receitasDB";
+import { addMeal } from "../services/dailyLogService";
 import { supabase } from "../services/supabase";
 import {
-  createMealFromRecipe,
   filterByCategory,
   filterBySearch,
   sortByGoal,
@@ -23,62 +24,39 @@ import { useAuth } from "./useAuth";
 export const useRecipes = () => {
   const { user } = useAuth();
 
-  // Estados principais
   const [objetivo, setObjetivo] = useState("Perder");
   const [categoriaAtiva, setCategoriaAtiva] = useState("Pequeno-almoço");
   const [pesquisa, setPesquisa] = useState("");
   const [favoritos, setFavoritos] = useState([]);
   const [receitasFiltradas, setReceitasFiltradas] = useState([]);
-
-  // Estados de loading
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [addingMeal, setAddingMeal] = useState(false);
 
-  // ==========================================
-  // FILTRAR RECEITAS (CORRIGIDO)
-  // ==========================================
+  // ── Filtrar receitas ────────────────────────────────────────────────────
 
   const aplicarFiltros = useCallback(() => {
-    console.log("🔍 Aplicando filtros:", {
-      categoriaAtiva,
-      pesquisa,
-      objetivo,
-    });
-
     let filtradas = receitasPortuguesas;
-    console.log("📚 Total de receitas:", filtradas.length);
 
-    // 1. Aplicar pesquisa (se houver)
     if (pesquisa.trim().length > 0) {
       filtradas = filterBySearch(filtradas, pesquisa);
-      console.log("🔎 Após pesquisa:", filtradas.length);
     } else {
-      // 2. Aplicar filtro de categoria (se não houver pesquisa)
       filtradas = filterByCategory(filtradas, categoriaAtiva, favoritos);
-      console.log(
-        `📁 Após filtro categoria "${categoriaAtiva}":`,
-        filtradas.length,
-      );
     }
 
-    // 3. Ordenar por objetivo do usuário
     filtradas = sortByGoal(filtradas, objetivo);
-    console.log("✅ Receitas finais:", filtradas.length);
-
     setReceitasFiltradas(filtradas);
   }, [categoriaAtiva, pesquisa, favoritos, objetivo]);
 
-  // ==========================================
-  // CARREGAR DADOS
-  // ==========================================
+  useEffect(() => {
+    if (!loading) aplicarFiltros();
+  }, [categoriaAtiva, pesquisa, favoritos, objetivo, loading, aplicarFiltros]);
+
+  // ── Carregar dados do perfil ────────────────────────────────────────────
 
   const carregarDados = async () => {
     try {
-      console.log("📥 Carregando dados do Supabase...");
-
       if (!user?.id) {
-        console.log("⚠️ Sem user.id");
         setLoading(false);
         return;
       }
@@ -92,17 +70,11 @@ export const useRecipes = () => {
       if (error) throw error;
 
       if (profile) {
-        console.log("✅ Profile carregado:", profile);
-
         setObjetivo(profile.objetivo || "Perder");
-        const listaFavs = profile.receitas_favoritas || [];
-        setFavoritos(listaFavs);
-
-        console.log("🎯 Objetivo:", profile.objetivo);
-        console.log("❤️ Favoritos:", listaFavs.length);
+        setFavoritos(profile.receitas_favoritas || []);
       }
     } catch (e) {
-      console.error("❌ Erro ao carregar dados:", e);
+      console.error("❌ Erro ao carregar receitas:", e);
       Alert.alert("Erro", "Não foi possível carregar as receitas.");
     } finally {
       setLoading(false);
@@ -110,46 +82,25 @@ export const useRecipes = () => {
     }
   };
 
-  // ==========================================
-  // APLICAR FILTROS QUANDO MUDAR ESTADOS
-  // ==========================================
-
-  useEffect(() => {
-    if (!loading) {
-      console.log("🔄 Estados mudaram, reaplicando filtros...");
-      aplicarFiltros();
-    }
-  }, [categoriaAtiva, pesquisa, favoritos, objetivo, loading, aplicarFiltros]);
-
-  // ==========================================
-  // INICIALIZAÇÃO
-  // ==========================================
-
   const inicializar = useCallback(async () => {
-    console.log("🚀 Inicializando useRecipes...");
     setLoading(true);
     await carregarDados();
   }, [user]);
 
   const onRefresh = useCallback(async () => {
-    console.log("🔄 Refresh...");
     setRefreshing(true);
     await carregarDados();
   }, [user]);
 
-  // ==========================================
-  // FAVORITOS
-  // ==========================================
+  // ── Favoritos ──────────────────────────────────────────────────────────
 
   const toggleFavorito = async (recipeId) => {
     try {
-      if (!user?.id) {
-        Alert.alert("Erro", "É necessário estar autenticado.");
-        return;
-      }
+      if (!user?.id) return;
 
+      const listaAnterior = favoritos;
       const novaLista = toggleFavoriteHelper(recipeId, favoritos);
-      setFavoritos(novaLista);
+      setFavoritos(novaLista); // otimistic update
 
       const { error } = await supabase
         .from("profiles")
@@ -158,22 +109,17 @@ export const useRecipes = () => {
 
       if (error) throw error;
 
-      // Haptic feedback
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
       console.error("Erro ao toggle favorito:", error);
+      setFavoritos(favoritos); // reverter
       Alert.alert("Erro", "Não foi possível atualizar favoritos.");
-      // Reverter estado
-      setFavoritos(favoritos);
     }
   };
 
-  // ==========================================
-  // ADICIONAR REFEIÇÃO
-  // ==========================================
+  // ── Adicionar receita ao diário ────────────────────────────────────────
 
   const adicionarRefeicao = async (recipe, portion = 1) => {
-    // Validar receita
     const validation = validateRecipe(recipe);
     if (!validation.valid) {
       Alert.alert("Erro", validation.error);
@@ -188,32 +134,26 @@ export const useRecipes = () => {
         return false;
       }
 
-      // Buscar refeições atuais
-      const { data: profile, error: fetchError } = await supabase
-        .from("profiles")
-        .select("refeicoes_hoje")
-        .eq("id", user.id)
-        .single();
+      // Criar refeição COM macros completos (as receitas já têm protein, carbs, fats)
+      const novaMeal = {
+        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        nome: portion === 1 ? recipe.title : `${recipe.title} (${portion}x)`,
+        kcal: Math.round(recipe.kcal * portion),
+        proteina: Math.round((recipe.protein || 0) * portion),
+        hidratos: Math.round((recipe.carbs || 0) * portion),
+        gordura: Math.round((recipe.fats || 0) * portion),
+        hora: new Date().toLocaleTimeString("pt-PT", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        receitaId: recipe.id, // referência para saber de onde veio
+      };
 
-      if (fetchError) throw fetchError;
+      // ← AGORA vai para daily_logs (não para profiles)
+      const { error } = await addMeal(user.id, novaMeal);
+      if (error) throw error;
 
-      // Criar objeto de refeição
-      const novaMeal = createMealFromRecipe(recipe, portion);
-
-      // Adicionar à lista
-      const novaLista = [...(profile.refeicoes_hoje || []), novaMeal];
-
-      // Atualizar no Supabase
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ refeicoes_hoje: novaLista })
-        .eq("id", user.id);
-
-      if (updateError) throw updateError;
-
-      // Haptic feedback de sucesso
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
       return true;
     } catch (error) {
       console.error("Erro ao adicionar refeição:", error);
@@ -225,52 +165,23 @@ export const useRecipes = () => {
     }
   };
 
-  // ==========================================
-  // HANDLERS
-  // ==========================================
+  // ── Handlers ───────────────────────────────────────────────────────────
 
   const handleCategoriaChange = (categoria) => {
-    console.log("📂 Mudando categoria para:", categoria);
     setCategoriaAtiva(categoria);
-    setPesquisa(""); // Limpar pesquisa ao mudar categoria
-  };
-
-  const handlePesquisaChange = (texto) => {
-    console.log("🔎 Pesquisando:", texto);
-    setPesquisa(texto);
-  };
-
-  const handleClearSearch = () => {
-    console.log("🧹 Limpando pesquisa");
     setPesquisa("");
   };
 
-  // ==========================================
-  // UTILITÁRIOS
-  // ==========================================
+  const handleClearSearch = () => setPesquisa("");
 
-  const isRecipeFavorite = (recipeId) => {
-    return favoritos.includes(recipeId);
-  };
+  // ── Utilitários ────────────────────────────────────────────────────────
 
-  const getRecipeCount = () => {
-    return receitasFiltradas.length;
-  };
-
-  const getTotalRecipes = () => {
-    return receitasPortuguesas.length;
-  };
-
-  const getFavoritesCount = () => {
-    return favoritos.length;
-  };
-
-  // ==========================================
-  // RETORNO
-  // ==========================================
+  const isRecipeFavorite = (recipeId) => favoritos.includes(recipeId);
+  const getFavoritesCount = () => favoritos.length;
+  const getRecipeCount = () => receitasFiltradas.length;
+  const getTotalRecipes = () => receitasPortuguesas.length;
 
   return {
-    // Estados
     objetivo,
     categoriaAtiva,
     pesquisa,
@@ -279,19 +190,13 @@ export const useRecipes = () => {
     loading,
     refreshing,
     addingMeal,
-
-    // Setters
     setCategoriaAtiva: handleCategoriaChange,
-    setPesquisa: handlePesquisaChange,
-
-    // Funções principais
+    setPesquisa,
     inicializar,
     onRefresh,
     toggleFavorito,
     adicionarRefeicao,
     handleClearSearch,
-
-    // Utilitários
     isRecipeFavorite,
     getRecipeCount,
     getTotalRecipes,

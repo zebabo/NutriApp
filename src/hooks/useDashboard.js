@@ -1,16 +1,37 @@
 /**
- * 🎣 USE DASHBOARD HOOK - COM TIMEOUTS NAS QUERIES
+ * 🎣 USE DASHBOARD HOOK - MIGRADO PARA daily_logs
+ *
+ * Mudanças principais:
+ * - refeicoes_hoje e agua_hoje saíram de profiles → daily_logs
+ * - Reset diário automático eliminado (cada dia é uma linha nova)
+ * - Streak calculado a partir dos logs reais
+ * - macros reais calculados a partir das refeições (não só do peso)
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
+import {
+  ACHIEVEMENT_DEFINITIONS,
+  checkAndAwardAchievements,
+} from "../services/achievementService";
+import {
+  addMeal,
+  addWater,
+  calculateStreak,
+  getDailyLog,
+  getRecentLogs,
+  getTodayDate,
+  getTotalCalories,
+  getTotalMacros,
+  removeMeal,
+  resetWater,
+} from "../services/dailyLogService";
 import { supabase } from "../services/supabase";
 import { MAX_HISTORY_DAYS, WATER_GOAL } from "../utils/dashboardConstants";
 import {
   generateMealId,
-  isToday,
   validateMeal,
   validateWater,
   validateWeight,
@@ -35,37 +56,51 @@ const withTimeout = (promise, ms, operation) => {
 export const useDashboard = () => {
   const { user } = useAuth();
 
-  // Estados principais
+  // ── Perfil biométrico (vem de profiles) ──────────────────────────────────
   const [perfil, setPerfil] = useState(null);
+
+  // ── Log do dia atual (vem de daily_logs) ─────────────────────────────────
+  const [dailyLog, setDailyLog] = useState({ meals: [], water_ml: 0 });
+
+  // ── Cálculos nutricionais ─────────────────────────────────────────────────
   const [caloriasAlvo, setCaloriasAlvo] = useState(0);
-  const [macros, setMacros] = useState({
+  const [macrosAlvo, setMacrosAlvo] = useState({
     proteina: 0,
     hidratos: 0,
     gordura: 0,
   });
   const [metaAtingida, setMetaAtingida] = useState(false);
+
+  // ── Streak ────────────────────────────────────────────────────────────────
+  const [streak, setStreak] = useState(0);
+
+  // ── Achievements ──────────────────────────────────────────────────────────
+  const [achievements, setAchievements] = useState([]);
+  const [newAchievement, setNewAchievement] = useState(null); // para o modal
+
+  // ── Preferências ──────────────────────────────────────────────────────────
   const [unidade, setUnidade] = useState("Metric");
 
-  // Estados de loading
+  // ── Loading ───────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Estados de input
+  // ── Inputs ────────────────────────────────────────────────────────────────
   const [novoPeso, setNovoPeso] = useState("");
   const [alimentoNome, setAlimentoNome] = useState("");
   const [alimentoKcal, setAlimentoKcal] = useState("");
 
-  // Estados de favoritos
+  // ── Favoritos locais ──────────────────────────────────────────────────────
   const [favorites, setFavorites] = useState([]);
   const [showFavorites, setShowFavorites] = useState(false);
 
-  // Flags para controlar carregamento
+  // ── Controlo de carregamento ──────────────────────────────────────────────
   const isFirstLoad = useRef(true);
   const isLoadingRef = useRef(false);
 
-  // ==========================================
+  // ==========================================================================
   // CARREGAMENTO
-  // ==========================================
+  // ==========================================================================
 
   const carregarPreferencias = async () => {
     try {
@@ -80,7 +115,6 @@ export const useDashboard = () => {
   };
 
   const carregarDados = async () => {
-    // Evitar chamadas simultâneas
     if (isLoadingRef.current) {
       console.log("⚠️ [carregarDados] Já está a carregar - ignorando");
       return;
@@ -90,152 +124,84 @@ export const useDashboard = () => {
     isLoadingRef.current = true;
 
     try {
-      console.log("🔍 [carregarDados] user.id:", user?.id);
+      if (!user?.id) return;
 
-      if (!user?.id) {
-        console.log("⚠️ [carregarDados] Sem user - abortando");
+      // ── 1. Buscar perfil biométrico ──────────────────────────────────────
+      const { data: profileDB, error: profileError } = await withTimeout(
+        supabase.from("profiles").select("*").eq("id", user.id).single(),
+        10000,
+        "fetch_profile",
+      );
+
+      if (profileError) throw profileError;
+
+      if (!profileDB) {
+        console.warn("⚠️ Perfil não encontrado");
         return;
       }
 
-      // Aguardar um momento para estabilizar
-      console.log("⏳ [carregarDados] Aguardando 500ms...");
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      console.log("📞 [carregarDados] Buscando profile (timeout 10s)...");
-
-      // ✅ Query COM TIMEOUT
-      let profileDB, error;
-      try {
-        const result = await withTimeout(
-          supabase.from("profiles").select("*").eq("id", user.id).single(),
-          10000,
-          "fetch_profile",
-        );
-        profileDB = result.data;
-        error = result.error;
-      } catch (timeoutError) {
-        console.error("❌ [carregarDados] TIMEOUT na query!");
-        throw new Error("Timeout ao carregar dados. Tenta fazer refresh.");
-      }
-
-      console.log(
-        "📊 [carregarDados] Resposta - data:",
-        !!profileDB,
-        "error:",
-        !!error,
+      // ── 2. Buscar log de hoje ────────────────────────────────────────────
+      const { data: logHoje, error: logError } = await withTimeout(
+        getDailyLog(user.id, getTodayDate()),
+        8000,
+        "fetch_daily_log",
       );
 
-      if (error) {
-        console.error("❌ [carregarDados] ERRO Supabase:", error);
-        throw error;
-      }
+      if (logError) throw logError;
 
-      if (profileDB) {
-        console.log("✅ [carregarDados] Profile encontrado:", profileDB.nome);
+      // ── 3. Buscar logs recentes para streak ──────────────────────────────
+      const { data: logsRecentes } = await getRecentLogs(user.id, 30);
+      const streakAtual = calculateStreak(logsRecentes);
 
-        const hoje = new Date().toISOString().split("T")[0];
-        let dadosTratados = { ...profileDB };
+      // ── 4. Normalizar perfil ─────────────────────────────────────────────
+      const hoje = getTodayDate();
 
-        // Reset diário automático
-        if (!isToday(profileDB.ultima_data)) {
-          console.log("🔄 [carregarDados] Fazendo reset diário...");
+      // ── 5. Atualizar estado ──────────────────────────────────────────────
+      const perfilNormalizado = {
+        ...profileDB,
+        pesoAtual: profileDB.peso_atual,
+        pesoAlvo: profileDB.peso_alvo,
+        fatorAtividade: profileDB.fator_atividade,
+        historico: profileDB.historico || [
+          { data: hoje, peso: profileDB.peso_atual },
+        ],
+      };
 
-          try {
-            const { data: updatedProfile, error: updateError } =
-              await withTimeout(
-                supabase
-                  .from("profiles")
-                  .update({
-                    agua_hoje: 0,
-                    refeicoes_hoje: [],
-                    ultima_data: hoje,
-                  })
-                  .eq("id", user.id)
-                  .select()
-                  .single(),
-                5000,
-                "daily_reset",
-              );
+      setPerfil(perfilNormalizado);
+      setDailyLog(logHoje || { meals: [], water_ml: 0 });
+      setStreak(streakAtual);
+      setAchievements(profileDB.achievements || []);
+      calcularTudo(perfilNormalizado);
 
-            if (!updateError && updatedProfile) {
-              dadosTratados = updatedProfile;
-              console.log("✅ [carregarDados] Reset diário OK");
-            }
-          } catch (e) {
-            console.warn(
-              "⚠️ [carregarDados] Reset diário falhou, continuando...",
-            );
-          }
-        }
-
-        // Normalizar dados
-        const obj = {
-          ...dadosTratados,
-          pesoAtual: dadosTratados.peso_atual,
-          pesoAlvo: dadosTratados.peso_alvo,
-          fatorAtividade: dadosTratados.fator_atividade,
-          historico: dadosTratados.historico || [
-            { data: hoje, peso: dadosTratados.peso_atual },
-          ],
-          streak: dadosTratados.streak || 0,
-        };
-
-        console.log("📊 [carregarDados] setPerfil...");
-        setPerfil(obj);
-
-        console.log("🔢 [carregarDados] calcularTudo...");
-        calcularTudo(obj);
-
-        console.log("✅ [carregarDados] COMPLETO - perfil definido");
-      } else {
-        console.log("⚠️ [carregarDados] Nenhum profile encontrado");
-      }
+      console.log("✅ [carregarDados] COMPLETO");
     } catch (e) {
       console.error("❌ [carregarDados] EXCEÇÃO:", e.message);
       Alert.alert("Erro", e.message || "Não foi possível carregar os dados.");
     } finally {
-      console.log("🏁 [carregarDados] FINALLY - setLoading(false)");
       setLoading(false);
       setRefreshing(false);
       isLoadingRef.current = false;
     }
   };
 
-  // CARREGAMENTO AUTOMÁTICO NO MOUNT
+  // Carregamento automático no mount
   useEffect(() => {
-    console.log(
-      "🚀 [useEffect] MOUNT - user:",
-      !!user?.id,
-      "isFirstLoad:",
-      isFirstLoad.current,
-    );
-
     if (!user?.id) {
-      console.log("⚠️ [useEffect] Sem user, aguardando...");
       setLoading(false);
       return;
     }
+    if (!isFirstLoad.current) return;
 
-    // Só carregar se for a primeira vez
-    if (!isFirstLoad.current) {
-      console.log("⚠️ [useEffect] Não é primeira vez - ignorando");
-      return;
-    }
-
-    console.log("📞 [useEffect] Iniciando carregamento...");
     isFirstLoad.current = false;
-
     const carregar = async () => {
       setLoading(true);
       await carregarPreferencias();
       await carregarDados();
     };
-
     carregar();
   }, [user?.id]);
 
   const inicializar = useCallback(async () => {
-    console.log("🔄 [inicializar] Forçando reload...");
     isFirstLoad.current = false;
     setLoading(true);
     await carregarPreferencias();
@@ -243,15 +209,50 @@ export const useDashboard = () => {
   }, [user]);
 
   const onRefresh = useCallback(async () => {
-    console.log("🔄 [onRefresh] Pull to refresh...");
     setRefreshing(true);
     await carregarPreferencias();
     await carregarDados();
   }, [user]);
 
-  // ==========================================
-  // CÁLCULOS
-  // ==========================================
+  // ==========================================================================
+  // ACHIEVEMENTS
+  // ==========================================================================
+
+  const verificarAchievements = async (
+    logAtualizado,
+    streakAtual,
+    perfilAtualizado,
+  ) => {
+    if (!user?.id) return;
+
+    try {
+      const novos = await checkAndAwardAchievements(user.id, {
+        achievements,
+        streak: streakAtual ?? streak,
+        dailyLog: logAtualizado ?? dailyLog,
+        perfil: perfilAtualizado ?? { metaAtingida },
+      });
+
+      if (novos.length > 0) {
+        // Atualizar lista local
+        setAchievements((prev) => [...prev, ...novos]);
+
+        // Mostrar modal para o primeiro novo achievement
+        // Os restantes serão visíveis no banner
+        const def = ACHIEVEMENT_DEFINITIONS[novos[0].id];
+        if (def) setNewAchievement(def);
+      }
+    } catch (e) {
+      console.warn(
+        "⚠️ verificarAchievements falhou silenciosamente:",
+        e.message,
+      );
+    }
+  };
+
+  // ==========================================================================
+  // CÁLCULOS NUTRICIONAIS
+  // ==========================================================================
 
   const calcularTudo = (dados) => {
     const peso = parseFloat(dados.pesoAtual);
@@ -260,9 +261,10 @@ export const useDashboard = () => {
     const fatorAtividade = parseFloat(dados.fatorAtividade);
     const pesoAlvo = parseFloat(dados.pesoAlvo);
 
+    if (!peso || !altura || !idade || !fatorAtividade) return;
+
     const tmb = calculateTMB(peso, altura, idade, dados.sexo);
     const tdee = calculateTDEE(tmb, fatorAtividade);
-
     const { calories, metaAtingida: meta } = calculateTargetCalories(
       tdee,
       dados.objetivo,
@@ -272,139 +274,138 @@ export const useDashboard = () => {
 
     setMetaAtingida(meta);
     setCaloriasAlvo(calories);
-
-    const macrosCalculados = calculateMacros(peso, calories);
-    setMacros(macrosCalculados);
+    setMacrosAlvo(calculateMacros(peso, calories));
   };
 
-  // ==========================================
+  // Calorias consumidas hoje (calculadas a partir do dailyLog)
+  const calcularConsumidasHoje = () => getTotalCalories(dailyLog);
+
+  // Calorias que faltam
+  const calcularFaltam = () => caloriasAlvo - calcularConsumidasHoje();
+
+  // Macros reais consumidos hoje
+  const calcularMacrosHoje = () => getTotalMacros(dailyLog);
+
+  // ==========================================================================
   // ÁGUA
-  // ==========================================
+  // ==========================================================================
 
   const adicionarAgua = async (qtd) => {
-    if (!perfil) {
-      console.error("❌ [adicionarAgua] perfil é null!");
-      Alert.alert("Erro", "Perfil não carregado. Tenta fazer refresh.");
-      return;
-    }
+    if (!user?.id) return;
 
     const validation = validateWater(qtd);
-
     if (!validation.valid) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Erro", validation.error);
       return;
     }
 
+    // Otimistic update — atualiza UI imediatamente
+    const novoTotal = (dailyLog.water_ml || 0) + validation.value;
+    setDailyLog((prev) => ({ ...prev, water_ml: novoTotal }));
+
     try {
-      const novoTotal = (perfil.agua_hoje || 0) + validation.value;
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({ agua_hoje: novoTotal })
-        .eq("id", perfil.id);
-
+      const { error } = await addWater(user.id, validation.value);
       if (error) throw error;
-
-      setPerfil({ ...perfil, agua_hoje: novoTotal });
 
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-      if (novoTotal >= WATER_GOAL && (perfil.agua_hoje || 0) < WATER_GOAL) {
+      if (novoTotal >= WATER_GOAL && (dailyLog.water_ml || 0) < WATER_GOAL) {
         await Haptics.notificationAsync(
           Haptics.NotificationFeedbackType.Success,
         );
         Alert.alert("🎉 Meta de Água!", "Atingiste a meta diária de água!");
       }
     } catch (error) {
+      // Reverter em caso de erro
+      setDailyLog((prev) => ({ ...prev, water_ml: dailyLog.water_ml }));
       console.error("Erro ao adicionar água:", error);
       Alert.alert("Erro", "Não foi possível adicionar água.");
     }
   };
 
-  const resetAgua = async () => {
-    if (!perfil) return;
-
-    Alert.alert(
-      "Resetar Água",
-      "Tens a certeza que queres zerar o contador de água?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Sim, Resetar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const { error } = await supabase
-                .from("profiles")
-                .update({ agua_hoje: 0 })
-                .eq("id", perfil.id);
-
-              if (error) throw error;
-
-              setPerfil({ ...perfil, agua_hoje: 0 });
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            } catch (error) {
-              console.error("Erro ao resetar água:", error);
-              Alert.alert("Erro", "Não foi possível resetar a água.");
-            }
-          },
-        },
-      ],
-    );
+  const adicionarAguaManual = async (qtd) => {
+    await adicionarAgua(qtd);
   };
 
-  // ==========================================
+  const resetarAgua = async () => {
+    if (!user?.id) return;
+
+    Alert.alert("Resetar Água", "Tens a certeza?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Sim, Resetar",
+        style: "destructive",
+        onPress: async () => {
+          // Otimistic update
+          setDailyLog((prev) => ({ ...prev, water_ml: 0 }));
+
+          try {
+            const { error } = await resetWater(user.id);
+            if (error) throw error;
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          } catch (error) {
+            setDailyLog((prev) => ({ ...prev, water_ml: dailyLog.water_ml }));
+            Alert.alert("Erro", "Não foi possível resetar a água.");
+          }
+        },
+      },
+    ]);
+  };
+
+  // ==========================================================================
   // REFEIÇÕES
-  // ==========================================
+  // ==========================================================================
 
   const adicionarAlimento = async () => {
-    if (!perfil) {
-      Alert.alert("Erro", "Perfil não carregado.");
-      return;
-    }
+    if (!user?.id) return;
 
     const validation = validateMeal(alimentoNome, alimentoKcal);
-
     if (!validation.valid) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Erro", validation.error);
       return;
     }
 
+    const novaRefeicao = {
+      id: generateMealId(),
+      nome: validation.meal.nome,
+      kcal: validation.meal.calorias,
+      // Campos de macros — por agora 0 até integrares pesquisa de alimentos
+      proteina: 0,
+      hidratos: 0,
+      gordura: 0,
+      hora: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    // Otimistic update
+    const novaLista = [...(dailyLog.meals || []), novaRefeicao];
+    setDailyLog((prev) => ({ ...prev, meals: novaLista }));
+    setAlimentoNome("");
+    setAlimentoKcal("");
+
     try {
-      const novaRefeicao = {
-        id: generateMealId(),
-        nome: validation.meal.nome,
-        kcal: validation.meal.calorias,
-        hora: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-
-      const lista = [...(perfil.refeicoes_hoje || []), novaRefeicao];
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({ refeicoes_hoje: lista })
-        .eq("id", perfil.id);
-
+      const { error } = await addMeal(user.id, novaRefeicao);
       if (error) throw error;
-
-      setPerfil({ ...perfil, refeicoes_hoje: lista });
-      setAlimentoNome("");
-      setAlimentoKcal("");
-
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Verificar achievements após nova refeição
+      await verificarAchievements({ ...dailyLog, meals: novaLista });
     } catch (error) {
+      // Reverter
+      setDailyLog((prev) => ({ ...prev, meals: dailyLog.meals }));
+      setAlimentoNome(alimentoNome);
+      setAlimentoKcal(alimentoKcal);
       console.error("Erro ao adicionar alimento:", error);
       Alert.alert("Erro", "Não foi possível adicionar o alimento.");
     }
   };
 
   const removerAlimento = async (id) => {
-    if (!perfil) return;
+    if (!user?.id) return;
 
     Alert.alert("Remover Refeição", "Tens a certeza?", [
       { text: "Cancelar", style: "cancel" },
@@ -412,22 +413,17 @@ export const useDashboard = () => {
         text: "Remover",
         style: "destructive",
         onPress: async () => {
+          // Otimistic update
+          const listaAnterior = dailyLog.meals;
+          const novaLista = (dailyLog.meals || []).filter((m) => m.id !== id);
+          setDailyLog((prev) => ({ ...prev, meals: novaLista }));
+
           try {
-            const lista = perfil.refeicoes_hoje.filter(
-              (item) => item.id !== id,
-            );
-
-            const { error } = await supabase
-              .from("profiles")
-              .update({ refeicoes_hoje: lista })
-              .eq("id", perfil.id);
-
+            const { error } = await removeMeal(user.id, id);
             if (error) throw error;
-
-            setPerfil({ ...perfil, refeicoes_hoje: lista });
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           } catch (error) {
-            console.error("Erro ao remover alimento:", error);
+            setDailyLog((prev) => ({ ...prev, meals: listaAnterior }));
             Alert.alert("Erro", "Não foi possível remover o alimento.");
           }
         },
@@ -435,9 +431,9 @@ export const useDashboard = () => {
     ]);
   };
 
-  // ==========================================
-  // FAVORITOS
-  // ==========================================
+  // ==========================================================================
+  // FAVORITOS (AsyncStorage local — não muda)
+  // ==========================================================================
 
   const adicionarFavorito = async () => {
     if (!alimentoNome || !alimentoKcal) {
@@ -446,7 +442,6 @@ export const useDashboard = () => {
     }
 
     const validation = validateMeal(alimentoNome, alimentoKcal);
-
     if (!validation.valid) {
       Alert.alert("Erro", validation.error);
       return;
@@ -476,7 +471,6 @@ export const useDashboard = () => {
   const removerFavorito = async (id) => {
     const novosFavoritos = favorites.filter((f) => f.id !== id);
     setFavorites(novosFavoritos);
-
     try {
       await AsyncStorage.setItem(
         "@favorite_foods",
@@ -488,15 +482,15 @@ export const useDashboard = () => {
     }
   };
 
-  const adicionarDeFavoritos = async (favorito) => {
+  const adicionarDeFavoritos = (favorito) => {
     setAlimentoNome(favorito.nome);
     setAlimentoKcal(favorito.kcal.toString());
     setShowFavorites(false);
   };
 
-  // ==========================================
+  // ==========================================================================
   // PESO
-  // ==========================================
+  // ==========================================================================
 
   const registarPeso = async () => {
     if (!perfil) {
@@ -510,7 +504,6 @@ export const useDashboard = () => {
     }
 
     const validation = validateWeight(novoPeso, unidade);
-
     if (!validation.valid) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Erro", validation.error);
@@ -519,7 +512,7 @@ export const useDashboard = () => {
 
     try {
       const pesoKg = validation.value;
-      const hoje = new Date().toISOString().split("T")[0];
+      const hoje = getTodayDate();
 
       const novoHist = [
         ...(perfil.historico || []),
@@ -528,20 +521,12 @@ export const useDashboard = () => {
 
       const { error } = await supabase
         .from("profiles")
-        .update({
-          peso_atual: pesoKg,
-          historico: novoHist,
-        })
+        .update({ peso_atual: pesoKg, historico: novoHist })
         .eq("id", perfil.id);
 
       if (error) throw error;
 
-      const atualizado = {
-        ...perfil,
-        pesoAtual: pesoKg,
-        historico: novoHist,
-      };
-
+      const atualizado = { ...perfil, pesoAtual: pesoKg, historico: novoHist };
       setPerfil(atualizado);
       calcularTudo(atualizado);
       setNovoPeso("");
@@ -554,55 +539,58 @@ export const useDashboard = () => {
     }
   };
 
-  // ==========================================
+  // ==========================================================================
   // UTILITÁRIOS
-  // ==========================================
+  // ==========================================================================
 
   const exibirPeso = (valorKg) => {
     const num = parseFloat(valorKg);
     if (isNaN(num)) return "--";
-
     const converted = convertWeight(num, unidade);
     const unitLabel = unidade === "Imperial" ? "lb" : "kg";
-
     return `${converted}${unitLabel}`;
   };
 
-  const calcularConsumidasHoje = () => {
-    return (
-      perfil?.refeicoes_hoje?.reduce((total, item) => total + item.kcal, 0) || 0
-    );
-  };
-
-  const calcularFaltam = () => {
-    return caloriasAlvo - calcularConsumidasHoje();
-  };
-
-  // ==========================================
+  // ==========================================================================
   // RETORNO
-  // ==========================================
+  // ==========================================================================
 
   return {
+    // Dados
     perfil,
+    dailyLog,
+    streak,
+    achievements,
+    newAchievement,
+    setNewAchievement,
     caloriasAlvo,
-    macros,
+    macrosAlvo, // macros ALVO (baseados no peso)
     metaAtingida,
     unidade,
+
+    // Loading
     loading,
     refreshing,
+
+    // Inputs
     novoPeso,
     setNovoPeso,
     alimentoNome,
     setAlimentoNome,
     alimentoKcal,
     setAlimentoKcal,
+
+    // Favoritos
     favorites,
     showFavorites,
     setShowFavorites,
+
+    // Funções
     inicializar,
     onRefresh,
     adicionarAgua,
-    resetAgua,
+    adicionarAguaManual,
+    resetAgua: resetarAgua,
     adicionarAlimento,
     removerAlimento,
     adicionarFavorito,
@@ -610,8 +598,13 @@ export const useDashboard = () => {
     adicionarDeFavoritos,
     registarPeso,
     exibirPeso,
+
+    // Cálculos
     calcularConsumidasHoje,
     calcularFaltam,
+    calcularMacrosHoje, // ← NOVO: macros reais do dia
+
+    // Constantes
     metaAgua: WATER_GOAL,
   };
 };
